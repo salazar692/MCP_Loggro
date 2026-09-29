@@ -74,9 +74,13 @@ implementaciones, así que en pruebas se inyecta un cliente falso o un `fetch` f
 
 - Las credenciales **solo** llegan por variables de entorno (ver [`../.env.example`](../.env.example)).
   Nunca por argumentos de herramienta ni por archivos del repositorio.
-- Restobar: `POST /login` con correo y contraseña → `tokenCurrent`. El token vive **solo en memoria**
-  y se renueva con un nuevo login ante `401`. La duración real del token y el efecto de un login nuevo
-  sobre otras sesiones no están documentados (ver [`open-questions.md`](./open-questions.md)).
+- Restobar admite dos modos (ADR-014):
+  - **Token** (`LOGGRO_RESTOBAR_TOKEN`): se usa tal cual; si vence, se devuelve un error que explica cómo
+    renovarlo. No se guarda ninguna contraseña.
+  - **Usuario y clave**: `POST /login` → `tokenCurrent`. El token vive **solo en memoria**, el login es
+    perezoso (solo cuando llega la primera consulta) y se repite una única vez ante `401`.
+  La duración real del token y el efecto de un login nuevo sobre otras sesiones no están documentados
+  (B1 y B2 en [`open-questions.md`](./open-questions.md)).
 - La configuración se valida al arrancar con Zod. Si falta algo, el proceso termina con un mensaje
   claro en stderr que nunca imprime el valor de los secretos.
 - Cada producto futuro tendrá su propio prefijo (`LOGGRO_RESTOBAR_*`, `LOGGRO_PYMES_*`, …) y se
@@ -143,6 +147,7 @@ src/
       auth.ts              # login y caché del token en memoria
       client.ts            # un método por operación permitida
       schemas.ts           # esquemas Zod de las respuestas (solo campos usados)
+  export/                  # escritura de .xlsx/.csv en la carpeta local configurada (ADR-015)
   tools/
     shared/                # paginación, fechas y formato de salida comunes
     restobar/              # una herramienta por archivo
@@ -161,7 +166,7 @@ tests/
 | Unitarias | Mapeo de parámetros, paginación, fechas, saneamiento, mapeo de errores, redacción de logs. | No (fetch inyectado) | Sí |
 | Contrato | Toda operación de la allowlist existe en el inventario oficial y es de lectura. | No | Sí |
 | MCP extremo a extremo | Cliente y servidor del SDK conectados en memoria: listado de herramientas, esquemas y llamadas. | No | Sí |
-| Integración | Llamadas reales a Restobar con credenciales de prueba. | Sí | **No** (manual, local, opt-in) |
+| Integración | Llamadas reales a Restobar (negocio en producción): solo herramientas de lectura; verifican la forma de las respuestas y **no imprimen datos**. | Sí | **No** (manual, en el equipo del propietario, opt-in) |
 | Manual | [MCP Inspector](https://github.com/modelcontextprotocol/inspector) y un cliente real. | Sí | No |
 
 Los fixtures se construyen a partir de los **ejemplos oficiales** del OpenAPI y usan solo datos
@@ -169,7 +174,8 @@ sintéticos. Nunca se versionan respuestas reales.
 
 ## 11. Limitaciones conocidas
 
-- Un solo producto (Restobar) en la fase 1. Cada producto adicional exige otro módulo de autenticación.
+- Un solo producto (Restobar) en la fase 1: es el único que se puede probar contra la API real (ADR-013).
+  Cada producto adicional exige otro módulo de autenticación y pruebas reales antes de publicarse.
 - Duración del token, sesión única, límites de peticiones y zona horaria de Restobar **no están
   documentados**; se validarán en pruebas reales antes de diseñar alrededor de ellos.
 - Las cuentas trial o gratuitas limitan el historial visible (24 h o 30 días); el MCP no puede

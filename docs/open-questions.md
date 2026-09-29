@@ -1,56 +1,51 @@
 # Preguntas abiertas
 
-Documento vivo. Cuando una pregunta se resuelva, se registra la respuesta (fecha y fuente) y, si cambia una
+Documento vivo. Cuando una pregunta se resuelve se registra la respuesta (fecha y fuente) y, si cambia una
 decisión, se actualiza [`decisions.md`](./decisions.md).
 
-## A. Para el propietario del proyecto
+## A. Respuestas del propietario (2026-09-29)
 
-### Alta prioridad (condicionan el diseño)
+| # | Pregunta | Respuesta | Efecto |
+| --- | --- | --- | --- |
+| A1 | ¿Negocio real o de prueba? | Negocio **real, en producción**. | Todo es solo consulta; las pruebas reales se hacen con cuidado (ADR-013). |
+| A2 | ¿Usuario dedicado para el MCP? | **No es posible**; se usa el usuario propio de producción. | ADR-014; riesgos en [`security.md`](./security.md) §3. |
+| A3 | ¿Excluir datos personales? | **No excluirlos.** Caso de uso: listado de clientes en Excel sin entrar a Loggro. | ADR-011 (incluidos, redacción opcional) y ADR-015 (exportación a archivo). |
+| A4 | ¿Alcance de la fase 1? | Un MCP **funcional para cualquier persona**, cliente de Loggro o desarrollador, que use Restobar. | ADR-007 (instalación local por stdio). |
+| A5 | ¿Relación con Loggro? | **Cliente de Loggro**, con API y varias automatizaciones. | Proyecto independiente; el README lo aclara. |
+| A6 | ¿Madurez? | **Producción**, para quien lo instale con su token o su usuario y clave. | ADR-009 (npm, SemVer, releases). |
+| A7 | ¿Público? | Cualquier persona interesada: empresas, desarrolladores y usuarios. | README y guías de instalación también para personas no técnicas. |
 
-| # | Pregunta | Por qué importa |
-| --- | --- | --- |
-| A1 | ¿Las credenciales de Restobar son de un negocio real con operación o de uno de prueba? ¿Qué plan tiene (trial, gratuito, premium)? | Trial solo ve 24 h de clientes, facturas y pedidos; gratuito, 30 días de ventas; los reportes exigen premium. Define qué se puede probar. |
-| A2 | ¿Puedes crear en Restobar un **usuario dedicado** para el MCP y asignarle un rol con permisos mínimos? ¿Ese usuario se usa también en el POS? | Mínimo privilegio y riesgo de cerrar la sesión de una persona si un login nuevo invalida el anterior (no documentado). |
-| A3 | ¿Excluimos por defecto documento, teléfono, correo, dirección y fecha de nacimiento de clientes y proveedores? ¿Debe existir una opción para activarlos? | Privacidad de terceros frente a utilidad (ADR-011). |
-| A4 | ¿La fase 1 es solo local (el usuario ejecuta el servidor en su máquina con Claude Desktop o Claude Code)? ¿Hay planes de un servidor remoto o multiusuario? | Un servidor remoto cambia por completo el modelo de seguridad (OAuth, aislamiento de credenciales). |
-| A5 | ¿Cuál es tu relación con Loggro? (proyecto independiente, cliente, empleado, partner) ¿Loggro conoce o respalda el proyecto? | Uso de la marca «Loggro», aviso de «proyecto no oficial» y posibilidad de consultar a Loggro lo no documentado. |
-| A6 | ¿Qué nivel de madurez esperas? ¿Experimental y personal, o apto para que terceros lo usen en producción? | Define la exigencia de pruebas, versionado, soporte y política de seguridad. |
-| A7 | ¿Quién es el público principal? (tú mismo, negocios que usan Restobar, contadores, desarrolladores de agentes) | Orienta el tono del README, el catálogo de herramientas y la documentación de instalación. |
-
-### Media prioridad
-
-| # | Pregunta | Propuesta por defecto |
-| --- | --- | --- |
-| A8 | Después de Restobar, ¿qué producto sigue? (PYMES parece el de mayor valor para contadores y equipos financieros; su token se genera en la aplicación) | PYMES |
-| A9 | ¿Publicamos en npm para instalar con `npx`? ¿Con qué nombre? | `mcp-loggro`, SemVer desde `0.1.0`, con releases en GitHub |
-| A10 | Idioma: ¿documentación en español con resumen en inglés, nombres de herramientas en inglés y descripciones en español? | Sí (ADR-012) |
-| A11 | Licencia MIT con titular «Andrew»: ¿es el nombre que quieres en el copyright? | Mantener MIT |
-| A12 | ¿Qué canal de contacto se publica para reportes de conducta (Código de Conducta) y de seguridad? ¿Activamos el reporte privado de vulnerabilidades de GitHub? | Reporte privado de GitHub para seguridad; el Código de Conducta se crea cuando haya contacto |
-| A13 | ¿Aceptas contribuciones externas desde ya? ¿Proteges la rama `main` (PR obligatorio y CI en verde)? | Sí, con protección de `main` |
-| A14 | Además de Claude, ¿qué clientes MCP quieres soportar explícitamente? (Cursor, VS Code, otros) | Probar con Claude Desktop, Claude Code y MCP Inspector |
-
-### Baja prioridad
-
-| # | Pregunta | Propuesta por defecto |
-| --- | --- | --- |
-| A15 | ¿Soportamos Node 22 y 24? | Sí |
-| A16 | ¿Límites propios: `pageSize` máximo 50 y rango de fechas máximo 93 días? | Sí, ajustables |
-| A17 | ¿Zona horaria por defecto `America/Bogota` para interpretar «hoy» o «esta semana»? ¿Hay negocios fuera de Colombia? | `America/Bogota`, configurable |
-| A18 | ¿Quieres pruebas de integración automáticas en CI más adelante (con secretos en un entorno protegido de GitHub)? | Solo manuales en la fase 1 |
+**Aceptadas por defecto** (propuestas anteriores sin objeción): PYMES como siguiente producto cuando
+alguien pueda probarlo (A8); nombre `mcp-loggro` en npm (A9); idioma (A10, ADR-012); licencia MIT
+(A11); reporte privado de vulnerabilidades de GitHub (A12); contribuciones externas con `main` protegida
+(A13); pruebas con Claude Desktop, Claude Code y MCP Inspector (A14); Node 22 y 24 (A15); `pageSize`
+máximo 50 y rango de 93 días (A16); zona horaria `America/Bogota` configurable (A17); pruebas de
+integración solo manuales (A18).
 
 ## B. No documentado por Loggro: confirmar con Loggro o en pruebas reales
 
 | # | Tema | Cómo resolverlo |
 | --- | --- | --- |
-| B1 | Duración del token de Restobar (`tokenCurrent`) y mensaje exacto al expirar. | Prueba real: decodificar `exp` del JWT propio (sin registrarlo) y observar el `401`. |
-| B2 | ¿Un login nuevo en Restobar invalida los tokens anteriores del mismo usuario? | Prueba real con dos logins sucesivos del usuario dedicado. |
-| B3 | Límites de peticiones de Restobar (y de PYMES, Enterprise y Nómina). | Consultar a Loggro. No hacer pruebas de carga contra producción. |
+| B1 | Duración del token de Restobar (`tokenCurrent`) y mensaje exacto al expirar. | Experiencia del propietario con sus automatizaciones (C1), o leer `exp` del JWT propio sin registrarlo. |
+| B2 | **Crítico:** ¿un login nuevo en Restobar invalida los tokens anteriores del mismo usuario? Con el usuario de producción, podría cerrar la sesión del POS o romper automatizaciones. | Experiencia del propietario (C1); si no se sabe, una prueba controlada en un horario sin operación. |
+| B3 | Límites de peticiones de Restobar. | Consultar a Loggro. No hacer pruebas de carga contra producción. |
 | B4 | Zona horaria con la que Restobar aplica `dateInit`/`dateEnd`. | Prueba real con facturas de horas conocidas cerca de medianoche. |
-| B5 | Qué ocurre al superar el `limit` máximo (error o recorte). | Prueba real con un valor alto, o consulta a Loggro. |
-| B6 | Código de permiso necesario para `GET /invoices` y `GET /orders` (el `403` no lo nombra) y permisos mínimos de un rol de solo lectura. | Prueba real con un rol restringido. |
+| B5 | Qué ocurre al superar el `limit` máximo (error o recorte). | Consultar a Loggro; no hace falta probarlo si el MCP nunca supera el máximo. |
+| B6 | Código de permiso necesario para `GET /invoices` y `GET /orders` (el `403` no lo nombra). | Solo importa a quienes usen roles restringidos; documentar lo que se observe. |
 | B7 | Moneda de los montos en Restobar. | Consultar a Loggro. |
-| B8 | ¿Ofrece Restobar un token de integración (como PYMES o Nómina) en lugar de correo y contraseña? | Consultar a Loggro. Sería más seguro. |
-| B9 | ¿Hay entorno de pruebas (sandbox) para Restobar? | Consultar a Loggro. Solo se documentan entornos de prueba para Alojamientos y Documentos Electrónicos. |
-| B10 | Términos de uso de la API: ¿permiten herramientas de terceros de código abierto y el envío de datos a proveedores de IA? | Consultar a Loggro. No aparece en el portal para desarrolladores. |
-| B11 | Semántica de `allBusiness` y de los negocios padre/hijo. | Prueba real si el negocio tiene sucursales. |
-| B12 | Nómina: ¿los GET «Calcular …» (`/pagos/pagarNominaPeriodica`, …) persisten resultados? | Consultar a Loggro antes de considerar Nómina. |
+| B8 | ¿Ofrece Restobar un token de integración de larga duración (como PYMES o Nómina)? | Consultar a Loggro. Sería más seguro que usuario y clave. |
+| B9 | ¿Hay entorno de pruebas (sandbox) para Restobar? | Consultar a Loggro. |
+| B10 | Términos de uso de la API: ¿permiten herramientas de terceros de código abierto y enviar datos a proveedores de IA? | Consultar a Loggro. |
+| B11 | Semántica de `allBusiness` y de los negocios padre/hijo. | Prueba real si el negocio tiene sucursales (C6). |
+| B12 | Nómina: ¿los GET «Calcular …» persisten resultados? | Solo relevante si algún día se incluye Nómina. |
+
+## C. Preguntas pendientes para el propietario
+
+| # | Pregunta | Por qué importa |
+| --- | --- | --- |
+| C1 | ¿Cómo obtienen el token tus automatizaciones actuales? ¿Con `POST /login` y este mismo usuario? ¿Has visto que un login en otro lugar invalide un token? ¿Cuánto dura el token en tu experiencia? | Resuelve B1 y B2 sin experimentar en producción. |
+| C2 | ¿Qué plan tiene tu negocio en Restobar (premium o no)? | Los reportes y el historial de cuadres de caja requieren premium; define qué herramientas se pueden verificar. |
+| C3 | ¿Dónde ejecutamos las pruebas contra producción? Propuesta: **tú, en tu equipo**, con un comando de solo lectura que no imprime datos. Alternativa: guardar las credenciales como secretos del entorno de Claude Code en la nube. | Las credenciales y los datos reales no deberían salir de tu equipo sin necesidad. |
+| C4 | Exportación: ¿basta con `.xlsx` o también quieres `.csv`? ¿En qué carpeta deben guardarse por defecto? | Define ADR-015. |
+| C5 | ¿Qué nombre va como titular del copyright (hoy «Andrew») y qué contacto publicamos para el Código de Conducta? | Proyecto público en producción: conviene tener Código de Conducta con contacto real. |
+| C6 | ¿Tu negocio tiene sucursales (negocio padre e hijos) en Restobar? | Define si hay que soportar `allBusiness` desde la fase 1. |

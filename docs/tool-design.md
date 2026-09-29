@@ -7,8 +7,10 @@
 
 1. **Una herramienta, una intención.** Herramientas pequeñas y componibles: «listar facturas» y «ver
    una factura» son herramientas distintas. Nada de herramientas «hacer cualquier consulta».
-2. **Solo lectura, siempre.** Anotaciones `readOnlyHint: true`, `destructiveHint: false`,
-   `idempotentHint: true` y `openWorldHint: true`.
+2. **Solo lectura en Loggro, siempre.** Anotaciones `readOnlyHint: true`, `destructiveHint: false`,
+   `idempotentHint: true` y `openWorldHint: true`. Única excepción: las herramientas de exportación
+   escriben un archivo nuevo en el equipo del usuario, así que declaran `readOnlyHint: false` (con
+   `destructiveHint: false`) para que el cliente MCP pueda pedir confirmación.
 3. **Nombres estables y con prefijo de producto:** `restobar_<verbo>_<recurso>` en `snake_case`
    (p. ej. `restobar_list_invoices`). El prefijo evita colisiones cuando se añadan PYMES u otros productos.
 4. **Descripciones para el modelo:** qué hace, cuándo usarla, qué devuelve, restricciones (plan, permisos,
@@ -20,7 +22,9 @@
    `pagination: { page, pageSize, total, hasMore }`.
 7. **Salida estructurada** (`structuredContent` con `outputSchema`) más un resumen breve en texto. Solo
    campos seleccionados; nunca el objeto crudo de la API.
-8. **Datos sensibles fuera por defecto** (ver [`security.md`](./security.md) §4).
+8. **Secretos siempre fuera; datos personales incluidos** salvo `LOGGRO_REDACT_PERSONAL_DATA=true`
+   (ADR-011, [`security.md`](./security.md) §4). Para listados grandes se usan herramientas de exportación
+   que no pasan los datos por el modelo (ADR-015).
 9. **Errores accionables** (ver [`architecture.md`](./architecture.md) §7).
 10. **Sin inventar:** cada herramienta referencia su `docSlug` oficial y pasa la prueba de contrato.
 
@@ -51,6 +55,7 @@ los reportes que requieren plan premium.
 | `restobar_list_clients` | Buscar clientes por nombre o documento, para filtrar facturas por cliente. | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)) | trial: solo 24 h; **datos personales** |
 | `restobar_list_payment_methods` | Listar métodos de pago (valores válidos para filtrar facturas). | `GET /paymentMethods` ([consultarmetodospago](https://developer.loggro.com/reference/consultarmetodospago)) | sin paginación |
 | `restobar_sales_by_day` | Totales de facturación por día en un rango. | `GET /stats/totalInvoicesByDays` ([gettotalinvoicesbydays](https://developer.loggro.com/reference/gettotalinvoicesbydays)) | permiso `ST_GET_SALES` |
+| `restobar_export_clients` | Exportar **todos** los clientes a un archivo Excel local, sin pasar los datos por el modelo (ADR-015). | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)), todas las páginas | escribe en disco local; trial: solo 24 h |
 
 ### P2
 
@@ -114,7 +119,7 @@ los reportes que requieren plan premium.
       "total": 0,
       "totalPaid": 0,
       "createdOn": "ISO 8601",
-      "client": { "id": "string", "name": "string" },
+      "client": { "id": "string", "name": "string", "phone": "string" },
       "table": { "id": "string", "name": "string" },
       "dianState": "string | null"
     }
@@ -123,7 +128,9 @@ los reportes que requieren plan premium.
 }
 ```
 
-Se omiten `client.phone`, `business.nit`, `business.address`, `cashier` y `delivery.deliveryGuy`.
+Se omiten `business.nit` y `business.address` (datos del propio negocio, repetidos en cada factura),
+`cashier` y `delivery.deliveryGuy`, para mantener la respuesta compacta. `client.phone` se incluye salvo que
+la redacción de datos personales esté activada.
 
 **Errores:** `403` → falta de permiso para ver facturas; `401` tras re-login → autenticación; `5xx` →
 servicio no disponible.
@@ -136,7 +143,8 @@ servicio no disponible.
 | «¿Cuánto inventario hay del producto Y?» | `restobar_list_products(name)` → `stock` y `locationsStock[].stock` | ✅ (campos en el esquema oficial) |
 | «¿Cuánto vendimos esta semana?» | `restobar_sales_by_day` | ✅ · ❓ zona horaria |
 | «¿Qué productos se vendieron más este mes?» | `restobar_sales_by_product` | ✅ solo con plan **premium** |
-| «Busca los clientes creados recientemente» | `restobar_list_clients` | ⚠️ `GET /clients` no documenta filtro ni orden por fecha (ordena por nombre). **No es posible de forma directa.** |
+| «Busca los clientes creados recientemente» | `restobar_list_clients(sort=createdOn)` | 🔎 `GET /clients` no filtra ni ordena por fecha (ordena por nombre), pero cada cliente trae `createdOn`. El MCP puede descargar el listado y ordenarlo localmente. |
+| «Dame el listado de mis clientes en Excel» | `restobar_export_clients` | ✅ `GET /clients` admite hasta 10 000 por página; el archivo se genera localmente |
 | «¿Qué facturas están pendientes de pago?» | `restobar_list_invoices(status=Pendiente)` | ✅ |
 
 ## 6. Cómo proponer una herramienta nueva

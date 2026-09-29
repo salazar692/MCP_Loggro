@@ -8,7 +8,10 @@
 > [!IMPORTANT]
 > **Estado: fase de preparación.** Todavía **no hay herramientas MCP implementadas**. El repositorio
 > contiene la investigación de la API oficial, la arquitectura propuesta y la infraestructura de
-> desarrollo. La documentación oficial de Loggro está en <https://developer.loggro.com>.
+> desarrollo.
+>
+> Proyecto **independiente**, creado por un cliente de Loggro. No es un producto oficial de Loggro S.A.S.
+> ni está afiliado a ella. La documentación oficial de Loggro está en <https://developer.loggro.com>.
 
 ## ¿Qué es?
 
@@ -16,8 +19,10 @@
   bares), PYMES, Enterprise, Nómina, Documentos Electrónicos DIAN y Alojamientos, entre otros.
   Cada producto tiene **su propia API y su propia autenticación**.
 - **MCP_Loggro** expondrá esas APIs como herramientas MCP para que Claude y otros clientes compatibles
-  respondan preguntas como «¿qué facturas quedaron pendientes ayer?» o «¿cuánto stock queda de este
-  producto?», **sin poder modificar nada**.
+  respondan preguntas como «¿qué facturas quedaron pendientes ayer?», «¿cuánto stock queda de este
+  producto?» o «exporta mis clientes a Excel», **sin poder modificar nada en Loggro**.
+- Está pensado para cualquier negocio que use Restobar, para sus equipos y para desarrolladores que
+  construyan agentes sobre Loggro.
 
 ## Alcance
 
@@ -27,8 +32,9 @@
 | Ejecución local por stdio (Claude Desktop, Claude Code, …) | Operaciones financieras o irreversibles |
 | Credenciales del propio usuario, solo en variables de entorno | Servidor remoto o multiusuario |
 
-Otros productos (PYMES, Nómina, …) se evaluarán después. Ver el
-[informe de la API](docs/loggro-api/README.md).
+Solo se publica lo que se ha probado contra la API real. Hoy eso es Restobar; los demás productos
+(PYMES, Nómina, …) están documentados en el [informe de la API](docs/loggro-api/README.md), pero no se
+implementarán hasta que alguien con acceso pueda verificarlos.
 
 ## Herramientas disponibles
 
@@ -38,8 +44,8 @@ Ninguna todavía. El catálogo **propuesto** para Restobar está en
 ## Requisitos
 
 - Node.js **22.18 o superior** (probado en 22 y 24).
-- Para usar el servidor, cuando exista: una cuenta de **Restobar** y, preferiblemente, un usuario
-  dedicado con permisos mínimos.
+- Para usar el servidor, cuando exista: acceso a **Restobar**, con un token o con usuario y contraseña.
+  Si puedes, crea un usuario dedicado con permisos mínimos.
 
 ## Instalación y configuración
 
@@ -48,8 +54,11 @@ El servidor todavía no es ejecutable. La configuración planeada se documenta e
 
 | Variable | Descripción |
 | --- | --- |
-| `LOGGRO_RESTOBAR_EMAIL` / `LOGGRO_RESTOBAR_PASSWORD` | Usuario de Restobar con el que se obtiene el token (`POST /login`). |
+| `LOGGRO_RESTOBAR_TOKEN` | Opción 1: token de Restobar ya obtenido. No guarda contraseña. |
+| `LOGGRO_RESTOBAR_EMAIL` / `LOGGRO_RESTOBAR_PASSWORD` | Opción 2: usuario de Restobar; el servidor obtiene el token con `POST /login`. |
 | `LOGGRO_RESTOBAR_BASE_URL` | URL base oficial, `https://api.pirpos.com`. |
+| `LOGGRO_REDACT_PERSONAL_DATA` | `true` para ocultar documento, correo, teléfono y dirección de clientes y proveedores. |
+| `LOGGRO_EXPORT_DIR` | Carpeta donde se guardan las exportaciones a Excel. |
 | `LOG_LEVEL` | `debug`, `info`, `warn` o `error` (los logs van siempre a stderr). |
 
 Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`](docs/security.md).
@@ -60,8 +69,10 @@ Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`]
   oficial, sin método genérico de solicitud y con anotaciones MCP `readOnlyHint`.
 - **Credenciales:** solo por variables de entorno; el token vive únicamente en memoria; nunca se
   registra en logs ni se devuelve al modelo.
-- **Datos:** todo lo que devuelvan las herramientas llega al proveedor del modelo de IA que uses.
-  Los datos personales de clientes y proveedores se excluirán por defecto.
+- **Datos:** todo lo que devuelvan las herramientas llega al proveedor del modelo de IA que uses,
+  **incluidos los datos personales de tus clientes y proveedores** (documento, correo, teléfono). Tú
+  decides si eso es aceptable para tu negocio; puedes ocultarlos con `LOGGRO_REDACT_PERSONAL_DATA=true`.
+  Las exportaciones a Excel se escriben en tu equipo y no pasan por el modelo.
 - **Prompt injection:** el contenido de Loggro (nombres, notas, descripciones) se trata como dato, nunca
   como instrucción.
 

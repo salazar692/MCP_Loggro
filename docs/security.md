@@ -27,14 +27,23 @@
 | A8 | Consumo excesivo de la API | Límite de tamaño de página propio, pocas solicitudes concurrentes, reintentos acotados con backoff y timeouts. |
 | A9 | Cadena de suministro | Dependencias mínimas y justificadas ([`decisions.md`](./decisions.md)); `package-lock.json` versionado; `npm ci` en CI; Dependabot; Actions fijadas por SHA. |
 | A10 | Suplantación de la API | Solo HTTPS hacia URL base oficial fija; la URL base configurable debe usar `https://` (validado al arrancar). |
-| A11 | Cierre de sesión del usuario humano | ❓ No se sabe si un login nuevo invalida otros tokens de Restobar. Por eso se recomienda un **usuario dedicado** para el MCP. |
+| A11 | Cierre de sesión del usuario humano o de sus automatizaciones | ❓ No se sabe si un login nuevo invalida otros tokens de Restobar. Se recomienda un **usuario dedicado**; si no es posible, usar el modo token (ADR-014) y hacer como máximo un login por sesión del servidor. |
+| A12 | Archivos exportados | Contienen datos personales y financieros. Se escriben con permisos solo para el usuario, en una carpeta configurable, sin sobrescribir y con nombre generado por el servidor (sin rutas controladas por el modelo). |
+| A13 | Inyección de fórmulas en Excel/CSV (CWE-1236) | Un nombre o nota de cliente como `=HYPERLINK(...)` podría ejecutarse al abrir el archivo. Toda celda de texto que empiece con `=`, `+`, `-` o `@` se neutraliza. |
 
 ## 3. Credenciales
 
-1. **Usuario dedicado.** Crear en Restobar un usuario exclusivo para el MCP, con un rol que tenga solo
-   los permisos de consulta necesarios. Restobar exige permisos de _creación/edición_ para algunas
-   consultas por ID (p. ej. `GET /clients/{id}` → `CL_POST`); las herramientas deben preferir las
+1. **Usuario dedicado (recomendado).** Crear en Restobar un usuario exclusivo para el MCP, con un rol
+   que tenga solo los permisos de consulta necesarios. Restobar exige permisos de _creación/edición_ para
+   algunas consultas por ID (p. ej. `GET /clients/{id}` → `CL_POST`); las herramientas deben preferir las
    consultas por listado para no obligar a conceder esos permisos.
+   **Si se usa el usuario principal** (caso del propietario del proyecto, en producción), ese usuario
+   probablemente tenga permisos de escritura. Entonces la garantía de solo lectura depende **por completo**
+   del código de MCP_Loggro. Por eso:
+   - el transporte HTTP solo permite `GET` a rutas de la allowlist, más `POST /login`, y esto tiene pruebas
+     que fallan si alguien añade otro método o una ruta no clasificada como `lectura`;
+   - no existe ninguna herramienta ni función interna que acepte un método o una ruta arbitrarios;
+   - las pruebas contra producción solo ejecutan herramientas de lectura y no imprimen datos.
 2. **Variables de entorno.** Las credenciales se leen del entorno del proceso. El cliente MCP (p. ej.
    Claude Desktop) las define en su configuración, que suele guardarse **en texto plano** en el perfil del
    usuario. El usuario debe proteger ese archivo y no compartirlo.
@@ -50,17 +59,22 @@
 
 | Categoría | Ejemplos (Restobar, según esquemas oficiales) | Tratamiento por defecto propuesto |
 | --- | --- | --- |
-| Identificación de personas | `name`, `lastName` de clientes y proveedores | Se incluyen: son necesarios para consultas como «facturas del cliente X». |
-| Datos personales de contacto e identidad | `document`, `idDocumentType`, `email`, `phone`, `address`, `birthdate` | **Excluidos o enmascarados** salvo activación explícita (pendiente de decisión del propietario). |
-| Datos financieros del negocio | totales, impuestos, medios de pago, gastos, utilidad | Se incluyen: son el propósito de la herramienta. |
+| Identificación de personas | `name`, `lastName` de clientes y proveedores | Incluidos. |
+| Datos personales de contacto e identidad | `document`, `idDocumentType`, `email`, `phone`, `address`, `birthdate` | **Incluidos** (ADR-011). Se ocultan con `LOGGRO_REDACT_PERSONAL_DATA=true`. |
+| Datos financieros de clientes | `points`, `creditMovement` (movimientos de crédito) | Incluidos solo en las herramientas que los necesiten. |
+| Datos financieros del negocio | totales, impuestos, medios de pago, gastos, utilidad | Incluidos: son el propósito de la herramienta. |
 | Secretos operativos | `password` de mesas, `tokenCurrent`, `lastTokenDevice` | **Siempre eliminados.** |
+
+Las herramientas de exportación (ADR-015) escriben los datos en un archivo local y **no** los envían al
+modelo: solo devuelven la ruta y el número de filas. Es la vía recomendada para listados grandes con datos
+personales.
 
 ### Riesgos y responsabilidades
 
 - Todo dato que el servidor devuelve **se envía al proveedor del modelo** que usa el cliente MCP (p. ej.
   Anthropic en Claude). Quien instala MCP_Loggro decide si eso es aceptable según sus políticas internas,
-  sus contratos y la normativa que le aplique (por ejemplo, la de protección de datos personales en
-  Colombia). Este proyecto **no afirma** cumplimiento legal específico.
+  sus contratos y la normativa que le aplique (en Colombia, el régimen de protección de datos personales
+  de la Ley 1581 de 2012 y sus normas reglamentarias). Este proyecto **no afirma** cumplimiento legal específico.
 - El usuario es responsable de las credenciales que configura y de quién tiene acceso al cliente MCP.
 - Se recomienda usar primero una cuenta o negocio de prueba.
 

@@ -7,7 +7,7 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 
 ## ADR-001 · Restobar como producto piloto
 
-- **Estado:** Aceptada (2026-09-29)
+- **Estado:** Aceptada (2026-09-29). Ver también ADR-013.
 - **Contexto:** Loggro expone siete productos con autenticaciones distintas
   ([`loggro-api/README.md`](./loggro-api/README.md) §1). El propietario solo tiene credenciales de Restobar.
 - **Decisión:** la fase 1 cubre solo Restobar (REST/JSON, `https://api.pirpos.com`). La estructura del
@@ -66,7 +66,7 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 
 ## ADR-007 · Transporte stdio en la fase 1
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada (2026-09-29: la fase 1 es un MCP funcional que cualquier persona instala en su equipo)
 - **Contexto:** con stdio, el servidor corre en la máquina del usuario con sus propias credenciales. Un
   servidor HTTP remoto requiere autorización OAuth según la especificación MCP, aislamiento de
   credenciales por usuario y operación de infraestructura.
@@ -91,12 +91,14 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
   `dotenv` (Node ya trae `--env-file`), `nock`/`msw` (basta con inyectar `fetch`), `tsx`/`ts-node`
   (Node ejecuta TypeScript de forma nativa), herramientas de cobertura (se añadirán cuando haya código que medir).
 
-## ADR-009 · npm como gestor de paquetes; paquete privado hasta definir la publicación
+## ADR-009 · npm como gestor y canal de distribución
 
-- **Estado:** Propuesta
-- **Decisión:** npm (incluido con Node, sin herramientas adicionales para quien contribuye),
-  `package-lock.json` versionado y `npm ci` en CI. `"private": true` evita publicar por accidente hasta
-  decidir nombre y estrategia de publicación (el nombre `mcp-loggro` estaba libre en npm el 2026-09-29).
+- **Estado:** Aceptada. El nombre del paquete sigue como propuesta.
+- **Contexto:** el proyecto servirá en producción a cualquier persona que quiera instalarlo.
+- **Decisión:** npm (incluido con Node), `package-lock.json` versionado y `npm ci` en CI. Distribución por
+  npm para instalar con `npx`, versionado SemVer desde `0.1.0`, `CHANGELOG.md` y releases en GitHub desde
+  la primera versión funcional. Hasta entonces, `"private": true` evita publicar por accidente. Nombre
+  propuesto: `mcp-loggro` (libre en npm el 2026-09-29).
 
 ## ADR-010 · Inventario de la API generado y versionado
 
@@ -108,16 +110,63 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 - **Consecuencias:** cualquier persona puede verificar de dónde sale cada endpoint. Las reglas de
   clasificación viven en código revisable (`scripts/lib/loggro-docs.ts`).
 
-## ADR-011 · Datos personales excluidos por defecto
+## ADR-011 · Datos personales incluidos, con redacción opcional
 
-- **Estado:** Propuesta
-- **Decisión:** las herramientas omiten documento, correo, teléfono, dirección y fecha de nacimiento de
-  clientes y proveedores, salvo que el propietario de la instalación lo active de forma explícita
-  (mecanismo por definir).
+- **Estado:** Aceptada (2026-09-29, decisión del propietario; reemplaza la propuesta de excluirlos)
+- **Contexto:** casos de uso reales como «dame el listado de mis clientes en Excel» necesitan documento,
+  correo y teléfono.
+- **Decisión:** las herramientas devuelven los datos de contacto e identificación de clientes y
+  proveedores. Quien instale el servidor puede ocultarlos con `LOGGRO_REDACT_PERSONAL_DATA=true`. Los
+  **secretos** (`password` de mesas, tokens, `lastTokenDevice`) se eliminan siempre, sin excepción.
+- **Consecuencias:** la responsabilidad de enviar datos personales al proveedor del modelo recae en quien
+  instala el servidor; el README lo advierte (ver [`security.md`](./security.md) §4).
 
 ## ADR-012 · Idioma
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada por defecto (sin objeción del propietario)
 - **Decisión:** documentación en español, con resumen en inglés en el README. Nombres de herramientas e
   identificadores de código en inglés (estables, ASCII). Descripciones de herramientas y mensajes de error
   en español.
+
+## ADR-013 · Solo se implementa lo que se puede probar: Restobar
+
+- **Estado:** Aceptada (2026-09-29)
+- **Contexto:** el propietario solo tiene acceso a Restobar, en un negocio real en producción. Los demás
+  productos no se pueden verificar.
+- **Decisión:** la fase 1 implementa y prueba contra la API real **solo Restobar**. Los demás productos
+  quedan documentados en el inventario, sin código, hasta que alguien con credenciales pueda probarlos.
+  No se publican herramientas «teóricas» sin verificar.
+- **Consecuencias:** el README solo anuncia lo verificado. Contribuciones de otros productos exigen
+  evidencia de prueba real (sin datos reales en el PR).
+
+## ADR-014 · Credenciales de Restobar: token o usuario y contraseña
+
+- **Estado:** Propuesta
+- **Contexto:** Restobar solo documenta `POST /login` con correo y contraseña. El propietario usará su
+  propio usuario de producción, que probablemente tenga permisos de escritura, y ya tiene automatizaciones
+  con la API.
+- **Decisión:** aceptar **uno** de dos modos:
+  1. `LOGGRO_RESTOBAR_TOKEN`: un token ya obtenido. El servidor no guarda contraseña ni hace login; si el
+     token vence, responde con un error que explica cómo renovarlo.
+  2. `LOGGRO_RESTOBAR_EMAIL` + `LOGGRO_RESTOBAR_PASSWORD`: login automático, token en memoria y un único
+     re-login ante `401`.
+- **Consecuencias:** el modo token evita dejar la contraseña en la configuración del cliente MCP. El modo
+  usuario y clave es más cómodo, pero su riesgo depende de si un login nuevo invalida otras sesiones
+  (pregunta B2), lo que podría afectar al POS y a las automatizaciones existentes.
+
+## ADR-015 · Exportación a archivo local (Excel)
+
+- **Estado:** Propuesta
+- **Contexto:** caso de uso del propietario: «un listado de mis clientes en Excel sin entrar a Loggro».
+  Pasar miles de registros por el modelo es lento, costoso, se trunca y expone todos los datos al proveedor
+  del modelo.
+- **Decisión:** herramientas de exportación (empezando por `restobar_export_clients`) que descargan todas
+  las páginas, escriben un archivo `.xlsx` (o `.csv`) en una carpeta local y devuelven al modelo solo la
+  ruta, el número de filas y las columnas, **no los datos**.
+- **Reglas:** nombre de archivo generado por el servidor (nunca por el modelo), carpeta configurable
+  (`LOGGRO_EXPORT_DIR`), sin sobrescribir archivos existentes, permisos solo para el usuario y
+  neutralización de fórmulas (celdas que empiezan con `=`, `+`, `-` o `@`). Como escribe en el disco del
+  usuario, la herramienta declara `readOnlyHint: false` y `destructiveHint: false`; en Loggro sigue siendo
+  solo lectura.
+- **Pendiente:** cómo generar `.xlsx` (dependencia pequeña frente a un escritor propio) se decidirá y
+  justificará al implementarlo.
