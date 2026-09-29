@@ -5,7 +5,7 @@ import { LoggroError } from '../../errors.ts';
 import { saveNewFile } from '../../export/save.ts';
 import { buildXlsx, type Cell } from '../../export/xlsx.ts';
 import type { RestobarClient } from '../../loggro/restobar/client.ts';
-import type { Client } from '../../loggro/restobar/schemas.ts';
+import { type Client, clientCity } from '../../loggro/restobar/schemas.ts';
 import {
   LOCAL_EXPORT_ANNOTATIONS,
   READ_ONLY_ANNOTATIONS,
@@ -126,7 +126,7 @@ export function summarizeClients(all: AllClients, timeZone: string, now = new Da
       byMonth.set(date.slice(0, 7), (byMonth.get(date.slice(0, 7)) ?? 0) + 1);
       byYear.set(date.slice(0, 4), (byYear.get(date.slice(0, 4)) ?? 0) + 1);
     }
-    const city = c.city?.trim();
+    const city = clientCity(c)?.trim();
     if (city) {
       // «Bogotá», «bogota» y «BOGOTA» cuentan como la misma ciudad.
       const key = city.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
@@ -191,7 +191,16 @@ const COLUMNS: Column[] = [
   { header: 'Correo', personal: true, value: (c) => c.email },
   { header: 'Teléfono', personal: true, value: (c) => c.phone },
   { header: 'Dirección', personal: true, value: (c) => c.address },
-  { header: 'Ciudad', personal: false, value: (c) => c.city },
+  { header: 'Ciudad', personal: false, value: (c) => clientCity(c) },
+  { header: 'Departamento', personal: false, value: (c) => c.cityDetail?.stateName },
+  {
+    header: 'Contacto',
+    personal: true,
+    value: (c) =>
+      [c.contact?.firstName, c.contact?.lastName].filter((v) => v?.trim()).join(' ') || null,
+  },
+  { header: 'Correo de contacto', personal: true, value: (c) => c.contact?.email },
+  { header: 'Teléfono de contacto', personal: true, value: (c) => c.contact?.phone },
   {
     header: 'Fecha de nacimiento',
     personal: true,

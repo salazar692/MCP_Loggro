@@ -76,7 +76,7 @@ export function registerOrderTools(server: McpServer, ctx: RestobarToolContext):
             total: o.total ?? null,
             status: o.status ?? null,
             kitchenStatus: o.statusKitchen ?? null,
-            complementary: o.complementary ?? null,
+            complementary: o.complementary?.isComplementary ?? null,
             cancelReason: o.causeCancel ?? null,
             createdOn: o.createdOn ?? null,
           })),

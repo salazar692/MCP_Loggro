@@ -18,7 +18,8 @@
  *
  * Uso: node --env-file=.env scripts/smoke-restobar.ts [herramienta ...]
  *      NODE_USE_ENV_PROXY=1 node scripts/smoke-restobar.ts [herramienta ...]   (nube, detrás de proxy)
- * Con SMOKE_RAW_SHAPE=1 imprime además los campos y tipos de la respuesta cruda (sin valores).
+ * Con SMOKE_RAW_SHAPE=1 imprime además los campos y tipos de la respuesta cruda (sin valores),
+ * combinando todos los elementos. SMOKE_INVOICE_ID=<id> fija la factura de restobar_get_invoice.
  */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -37,6 +38,8 @@ import { createServer } from '../src/server.ts';
 import { BULK_PAGE_SIZE } from '../src/tools/restobar/clients-bulk.ts';
 
 const MAX_REQUESTS_PER_TOOL = 5;
+// Con SMOKE_RAW_SHAPE=1 conviene ver más registros por solicitud (el costo es el mismo).
+const PAGE_SIZE = process.env.SMOKE_RAW_SHAPE === '1' ? 50 : 2;
 const LEDGER = path.resolve(import.meta.dirname, '../.cache/restobar-smoke-ledger.json');
 
 type Args = Record<string, unknown>;
@@ -85,7 +88,7 @@ function daysAgoInBogota(days: number): string {
 }
 
 const PLAN: Step[] = [
-  { tool: 'restobar_list_invoices', args: () => ({ pageSize: 2 }), note: 'recientes' },
+  { tool: 'restobar_list_invoices', args: () => ({ pageSize: PAGE_SIZE }), note: 'recientes' },
   {
     tool: 'restobar_list_invoices',
     args: () => ({ dateFrom: yesterdayInBogota(), dateTo: yesterdayInBogota(), pageSize: 3 }),
@@ -95,11 +98,11 @@ const PLAN: Step[] = [
     tool: 'restobar_get_invoice',
     args: (m) => (m.invoiceId ? { id: m.invoiceId } : 'falta una factura del paso anterior'),
   },
-  { tool: 'restobar_list_products', args: () => ({ pageSize: 2 }) },
+  { tool: 'restobar_list_products', args: () => ({ pageSize: PAGE_SIZE }) },
   { tool: 'restobar_list_categories', args: () => ({}) },
   { tool: 'restobar_list_payment_methods', args: () => ({}) },
-  { tool: 'restobar_list_orders', args: () => ({ pageSize: 2 }) },
-  { tool: 'restobar_list_clients', args: () => ({ pageSize: 2 }) },
+  { tool: 'restobar_list_orders', args: () => ({ pageSize: PAGE_SIZE }) },
+  { tool: 'restobar_list_clients', args: () => ({ pageSize: PAGE_SIZE }) },
   { tool: 'restobar_clients_summary', args: allClients },
   { tool: 'restobar_export_clients', args: allClients, note: 'archivo temporal que se borra' },
   {
@@ -118,6 +121,47 @@ function shape(value: unknown, depth = 0): unknown {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shape(v, depth + 1)]));
   }
   return typeof value;
+}
+
+type RawShape = string | { [key: string]: RawShape } | { '[]': RawShape };
+
+/**
+ * Campos y tipos de una respuesta cruda, combinando TODOS los elementos de cada arreglo: un campo
+ * vacío en el primero no oculta su tipo real. Tipos distintos se unen con «|». Nunca incluye valores.
+ */
+function rawShape(value: unknown, depth = 0): RawShape {
+  if (value === null || value === undefined) return 'null';
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 'array(0)';
+    return { '[]': value.map((v) => rawShape(v, depth + 1)).reduce(mergeShape) };
+  }
+  if (typeof value === 'object') {
+    if (depth >= 6) return 'object';
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, rawShape(v, depth + 1)]));
+  }
+  return typeof value;
+}
+
+function mergeShape(a: RawShape, b: RawShape): RawShape {
+  if (typeof a === 'string' && typeof b === 'string') {
+    return [...new Set([...a.split('|'), ...b.split('|')])].sort().join('|');
+  }
+  if (typeof a === 'string' || typeof b === 'string') {
+    // Objeto en unos elementos y primitivo en otros: se conserva el objeto y se anotan los demás.
+    const [obj, prim] = typeof a === 'string' ? [b, a] : [a, b as string];
+    const tag = (obj as Record<string, RawShape>)['(también)'];
+    return {
+      ...(obj as Record<string, RawShape>),
+      '(también)': typeof tag === 'string' ? mergeShape(tag, prim) : prim,
+    };
+  }
+  const out: Record<string, RawShape> = { ...(a as Record<string, RawShape>) };
+  for (const [k, v] of Object.entries(b)) {
+    out[k] = k in out ? mergeShape(out[k] as RawShape, v) : mergeShape(v, 'ausente');
+  }
+  for (const k of Object.keys(out))
+    if (!(k in b)) out[k] = mergeShape(out[k] as RawShape, 'ausente');
+  return out;
 }
 
 /** Para listas: cuántos elementos traen cada campo con valor (sin mostrarlo). */
@@ -241,7 +285,7 @@ async function main(): Promise<void> {
         .clone()
         .json()
         .catch(() => null);
-      console.log('  crudo:', JSON.stringify(shape(raw)));
+      console.log('  crudo:', JSON.stringify(rawShape(raw), null, 1));
     }
     return res;
   };
@@ -267,7 +311,8 @@ async function main(): Promise<void> {
   const client = new Client({ name: 'smoke', version: '0' });
   await client.connect(clientTransport);
 
-  const memory: Memory = {};
+  // SMOKE_INVOICE_ID permite probar restobar_get_invoice sin gastar una solicitud de la lista.
+  const memory: Memory = { invoiceId: process.env.SMOKE_INVOICE_ID || undefined };
   try {
     for (const step of plan) {
       const remaining = MAX_REQUESTS_PER_TOOL - (ledger[step.tool] ?? 0);

@@ -175,6 +175,37 @@ describe('servidor MCP', () => {
     });
   });
 
+  it('pedidos y productos: lee los campos con la forma real de la API', async () => {
+    const { client } = await connect((req) =>
+      req.url.pathname === '/orders'
+        ? {
+            body: {
+              data: [{ _id: 'o1', complementary: { isComplementary: true }, quantity: 1 }],
+              count: 1,
+            },
+          }
+        : {
+            body: {
+              data: [
+                {
+                  _id: 'p1',
+                  name: 'Producto',
+                  category: { _id: 'cat1', name: 'Categoría' },
+                  locationsStock: [{ locationStock: 'loc1', isMain: true }],
+                },
+              ],
+              count: 1,
+            },
+          },
+    );
+    const orders = await client.callTool({ name: 'restobar_list_orders', arguments: {} });
+    expect(orders.structuredContent).toMatchObject({ orders: [{ complementary: true }] });
+    const products = await client.callTool({ name: 'restobar_list_products', arguments: {} });
+    expect(products.structuredContent).toMatchObject({
+      products: [{ categoryId: 'cat1', locations: [{ locationId: 'loc1' }] }],
+    });
+  });
+
   it('valida argumentos antes de llamar a Restobar', async () => {
     const { client, calls } = await connect(() => ({ body: [] }));
     const result = await client.callTool({
@@ -202,7 +233,15 @@ function clientsApi(total: number, served = total) {
           document: `00${i}`,
           email: i % 2 === 0 ? `cliente${i}@ejemplo.test` : null,
           phone: '3000000000',
-          city: i % 3 === 0 ? 'Bogotá' : 'BOGOTA',
+          // Forma real de la API: la ciudad viene en cityDetail (no hay `city`).
+          cityDetail: {
+            countryCode: 'CO',
+            stateName: 'Bogotá D.C.',
+            cityName: i % 3 === 0 ? 'Bogotá' : 'BOGOTA',
+          },
+          ...(i % 10 === 0 && {
+            contact: { firstName: 'Ana', lastName: 'Contacto', email: `contacto${i}@ejemplo.test` },
+          }),
           points: i % 4 === 0 ? 10 : 0,
           createdOn: '2026-09-01T03:00:00.000Z', // 31 de agosto en Bogotá
         };
@@ -286,6 +325,10 @@ describe('listados grandes', () => {
     expect(sheet).toContain('cliente0@ejemplo.test');
     expect(sheet).toContain('>000</t>'); // documento con ceros a la izquierda
     expect(sheet).toContain('>2026-08-31 22:00</t>'); // fecha de creación en hora de Bogotá
+    expect(sheet).toContain('>Bogotá D.C.</t>'); // departamento desde cityDetail
+    expect(sheet).toContain('>Ana Contacto</t>');
+    expect(sheet).toContain('contacto0@ejemplo.test');
+    expect(out.columns).toEqual(expect.arrayContaining(['Ciudad', 'Departamento', 'Contacto']));
   });
 
   it('restobar_export_clients: con redacción activa omite las columnas personales', async () => {

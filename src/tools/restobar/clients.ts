@@ -11,6 +11,7 @@ import {
   runTool,
   toRestobarPage,
 } from '../shared.ts';
+import { clientCity } from '../../loggro/restobar/schemas.ts';
 import type { RestobarToolContext } from './context.ts';
 
 const nullableText = z.string().nullable();
@@ -78,7 +79,7 @@ export function registerClientTools(server: McpServer, ctx: RestobarToolContext)
             email: personal(c.email ?? null, redact),
             phone: personal(c.phone ?? null, redact),
             address: personal(c.address ?? null, redact),
-            city: c.city ?? null,
+            city: clientCity(c),
             birthdate: personal(c.birthdate ?? null, redact),
             loyaltyPoints: c.points ?? null,
             createdOn: c.createdOn ?? null,

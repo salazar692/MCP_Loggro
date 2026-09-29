@@ -11,6 +11,11 @@ const num = z.number().nullish().catch(null);
 const bool = z.boolean().nullish().catch(null);
 const id = z.string().catch('');
 const obj = <T extends z.ZodRawShape>(shape: T) => z.looseObject(shape).nullish().catch(null);
+/** Referencia a otro documento: ID en texto o, si Restobar la puebla, objeto con `_id`. */
+const ref = z
+  .union([z.string(), z.looseObject({ _id: z.string() }).transform((o) => o._id)])
+  .nullish()
+  .catch(null);
 
 export const Invoice = z.looseObject({
   _id: id,
@@ -38,7 +43,7 @@ export type Invoice = z.infer<typeof Invoice>;
 export const Product = z.looseObject({
   _id: id,
   name: str,
-  category: str,
+  category: ref,
   barcode: str,
   type: str,
   isActive: bool,
@@ -48,7 +53,7 @@ export const Product = z.looseObject({
   locationsStock: z
     .array(
       z.looseObject({
-        locationStock: str,
+        locationStock: ref,
         isMain: bool,
         stock: num,
         stockMinimum: num,
@@ -73,7 +78,8 @@ export const Order = z.looseObject({
   total: num,
   status: str,
   statusKitchen: str,
-  complementary: bool,
+  // Confirmado con la API real: objeto, no booleano.
+  complementary: obj({ isComplementary: bool }),
   causeCancel: str,
   createdOn: str,
 });
@@ -90,12 +96,20 @@ export const Client = z.looseObject({
   email: str,
   phone: str,
   address: str,
+  // Confirmado con la API real: no hay `city` ni `birthdate`; la ciudad viene en `cityDetail`.
+  // Se conservan por si otros negocios o versiones los envían.
   city: str,
+  cityDetail: obj({ cityName: str, stateName: str }),
+  contact: obj({ firstName: str, lastName: str, email: str, phone: str }),
   birthdate: str,
   points: num,
   createdOn: str,
 });
 export type Client = z.infer<typeof Client>;
+
+export function clientCity(c: Client): string | null {
+  return c.cityDetail?.cityName ?? c.city ?? null;
+}
 
 export const PaymentMethod = z.looseObject({ _id: id, name: str });
 export type PaymentMethod = z.infer<typeof PaymentMethod>;
