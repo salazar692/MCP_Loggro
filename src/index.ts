@@ -37,6 +37,7 @@ async function main(): Promise<void> {
     restobar: new RestobarClient(http, tokens),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
+    exportDir: config.exportDir,
     logger,
   });
   await server.connect(new StdioServerTransport());

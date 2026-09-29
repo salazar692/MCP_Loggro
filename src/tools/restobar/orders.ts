@@ -80,7 +80,13 @@ export function registerOrderTools(server: McpServer, ctx: RestobarToolContext):
             cancelReason: o.causeCancel ?? null,
             createdOn: o.createdOn ?? null,
           })),
-          pagination: pageInfo(args.page, args.pageSize, page.count, page.data.length),
+          pagination: pageInfo(
+            args.page,
+            args.pageSize,
+            page.count,
+            page.data.length,
+            'No recorras todas las páginas: afina con fechas, estado, mesa o producto.',
+          ),
         };
       }),
   );

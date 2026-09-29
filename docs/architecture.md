@@ -147,7 +147,9 @@ src/
       auth.ts              # login y caché del token en memoria
       client.ts            # un método por operación permitida
       schemas.ts           # esquemas Zod de las respuestas (solo campos usados)
-  export/                  # escritura de .xlsx/.csv en la carpeta local configurada (ADR-015)
+  export/
+    xlsx.ts                # escritor .xlsx sin dependencias (ADR-015)
+    save.ts                # archivo nuevo en la carpeta local configurada, sin sobrescribir
   tools/
     shared/                # paginación, fechas y formato de salida comunes
     restobar/              # una herramienta por archivo

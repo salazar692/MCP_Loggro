@@ -9,10 +9,13 @@
  *   ejecuciones en .cache/restobar-smoke-ledger.json). Sin reintentos.
  * - Imprime solo tipos, conteos y fechas técnicas; nunca nombres, documentos,
  *   teléfonos ni montos.
+ * - El resumen y la exportación de clientes solo se ejecutan si el total de
+ *   clientes cabe en el presupuesto; el archivo exportado se verifica y se borra.
  *
  * Uso: node --env-file=.env scripts/smoke-restobar.ts [herramienta ...]
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -25,6 +28,7 @@ import { RestobarClient } from '../src/loggro/restobar/client.ts';
 import { RESTOBAR_ALLOWLIST } from '../src/loggro/restobar/operations.ts';
 import { silentLogger } from '../src/logging.ts';
 import { createServer } from '../src/server.ts';
+import { BULK_PAGE_SIZE } from '../src/tools/restobar/clients-bulk.ts';
 
 const MAX_REQUESTS_PER_TOOL = 5;
 const LEDGER = path.resolve(import.meta.dirname, '../.cache/restobar-smoke-ledger.json');
@@ -32,12 +36,35 @@ const LEDGER = path.resolve(import.meta.dirname, '../.cache/restobar-smoke-ledge
 type Args = Record<string, unknown>;
 interface Step {
   tool: string;
-  args: (memory: Memory) => Args | null;
+  /** Argumentos, o el motivo para omitir el paso. */
+  args: (memory: Memory, remaining: number) => Args | string;
   note?: string;
 }
 interface Memory {
   invoiceId?: string;
+  clientsTotal?: number | null;
 }
+
+/** Resumen y exportación descargan todos los clientes: solo si caben en el presupuesto. */
+function allClients(m: Memory, remaining: number): Args | string {
+  if (m.clientsTotal === undefined)
+    return 'falta el total de clientes (requiere restobar_list_clients)';
+  if (m.clientsTotal === null) return 'Restobar no informó el total de clientes';
+  const needed = Math.max(1, Math.ceil(m.clientsTotal / BULK_PAGE_SIZE));
+  return needed <= remaining
+    ? {}
+    : `${m.clientsTotal} clientes requieren ${needed} solicitudes y el presupuesto restante es ${remaining}`;
+}
+
+// Valores que se imprimen tal cual: conteos, nunca datos de personas.
+const SAFE_VALUES = new Set([
+  'clients',
+  'reportedTotal',
+  'complete',
+  'rows',
+  'personalDataIncluded',
+  'restobarRequests',
+]);
 
 function yesterdayInBogota(): string {
   const now = new Date(Date.now() - 5 * 3_600_000); // Colombia: UTC−5 sin horario de verano
@@ -58,12 +85,17 @@ const PLAN: Step[] = [
     args: () => ({ dateFrom: yesterdayInBogota(), dateTo: yesterdayInBogota(), pageSize: 3 }),
     note: 'ayer (verifica zona horaria)',
   },
-  { tool: 'restobar_get_invoice', args: (m) => (m.invoiceId ? { id: m.invoiceId } : null) },
+  {
+    tool: 'restobar_get_invoice',
+    args: (m) => (m.invoiceId ? { id: m.invoiceId } : 'falta una factura del paso anterior'),
+  },
   { tool: 'restobar_list_products', args: () => ({ pageSize: 2 }) },
   { tool: 'restobar_list_categories', args: () => ({}) },
   { tool: 'restobar_list_payment_methods', args: () => ({}) },
   { tool: 'restobar_list_orders', args: () => ({ pageSize: 2 }) },
   { tool: 'restobar_list_clients', args: () => ({ pageSize: 2 }) },
+  { tool: 'restobar_clients_summary', args: allClients },
+  { tool: 'restobar_export_clients', args: allClients, note: 'archivo temporal que se borra' },
   {
     tool: 'restobar_sales_by_day',
     args: () => ({ dateFrom: daysAgoInBogota(7), dateTo: yesterdayInBogota() }),
@@ -118,6 +150,8 @@ function describeResult(tool: string, structured: Record<string, unknown>): void
       }
     } else if (typeof value === 'object' && value !== null) {
       console.log(`  ${key}:`, JSON.stringify(shape(value)));
+    } else if (SAFE_VALUES.has(key)) {
+      console.log(`  ${key}: ${String(value)}`);
     } else {
       console.log(`  ${key}: ${typeof value}`);
     }
@@ -161,7 +195,7 @@ async function main(): Promise<void> {
     console.log(`  BLOQUEADO antes de la red: ${reason}`);
     throw new Error(`BLOQUEADO: ${reason}`);
   };
-  const guardedFetch: typeof fetch = (input, init) => {
+  const guardedFetch: typeof fetch = async (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     const method = (init?.method ?? 'GET').toUpperCase();
     if (method !== 'GET') block(`método ${method} no permitido`);
@@ -172,8 +206,12 @@ async function main(): Promise<void> {
     }
     ledger[currentTool] = used + 1;
     console.log(`  → GET ${url.pathname} (solicitud ${used + 1}/${MAX_REQUESTS_PER_TOOL})`);
-    return fetch(url, init);
+    const res = await fetch(url, init);
+    const bytes = (await res.clone().arrayBuffer()).byteLength;
+    console.log(`  ← HTTP ${res.status}, ${(bytes / 1024).toFixed(1)} KB`);
+    return res;
   };
+  const exportDir = await mkdtemp(path.join(tmpdir(), 'mcp-loggro-smoke-'));
 
   const http = new HttpClient({
     baseUrl: config.restobar.baseUrl,
@@ -186,6 +224,7 @@ async function main(): Promise<void> {
     restobar: new RestobarClient(http, new StaticTokenProvider(config.restobar.auth.token)),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
+    exportDir,
     logger: silentLogger,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -196,13 +235,14 @@ async function main(): Promise<void> {
   const memory: Memory = {};
   try {
     for (const step of plan) {
-      const args = step.args(memory);
+      const remaining = MAX_REQUESTS_PER_TOOL - (ledger[step.tool] ?? 0);
+      const args = step.args(memory, remaining);
       console.log(`\n# ${step.tool}${step.note ? ` (${step.note})` : ''}`);
-      if (args === null) {
-        console.log('  omitida: falta un dato de un paso anterior');
+      if (typeof args === 'string') {
+        console.log(`  omitida: ${args}`);
         continue;
       }
-      if ((ledger[step.tool] ?? 0) >= MAX_REQUESTS_PER_TOOL) {
+      if (remaining <= 0) {
         console.log('  omitida: presupuesto de solicitudes agotado');
         continue;
       }
@@ -218,12 +258,21 @@ async function main(): Promise<void> {
       describeResult(step.tool, structured);
       const invoices = structured.invoices as { id?: string }[] | undefined;
       memory.invoiceId ??= invoices?.[0]?.id;
+      if (step.tool === 'restobar_list_clients') {
+        memory.clientsTotal = (structured.pagination as { total: number | null }).total;
+      }
+      if (typeof structured.file === 'string') {
+        const file = await readFile(structured.file);
+        const isZip = file.subarray(0, 2).toString('latin1') === 'PK';
+        console.log(`  archivo: ${(file.length / 1024).toFixed(1)} KB, formato ZIP/XLSX: ${isZip}`);
+      }
     }
   } finally {
     await mkdir(path.dirname(LEDGER), { recursive: true });
     await writeFile(LEDGER, JSON.stringify(ledger, null, 2));
     console.log('\nSolicitudes acumuladas por herramienta:', JSON.stringify(ledger));
     await client.close();
+    await rm(exportDir, { recursive: true, force: true });
   }
 }
 

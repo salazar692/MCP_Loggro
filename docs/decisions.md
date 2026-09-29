@@ -156,7 +156,7 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 
 ## ADR-015 · Exportación a archivo local (Excel)
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada e implementada (2026-09-29): `restobar_export_clients` y `restobar_clients_summary`
 - **Contexto:** caso de uso del propietario: «un listado de mis clientes en Excel sin entrar a Loggro».
   Pasar miles de registros por el modelo es lento, costoso, se trunca y expone todos los datos al proveedor
   del modelo.
@@ -168,9 +168,27 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
   neutralización de fórmulas (celdas que empiezan con `=`, `+`, `-` o `@`). Como escribe en el disco del
   usuario, la herramienta declara `readOnlyHint: false` y `destructiveHint: false`; en Loggro sigue siendo
   solo lectura.
-- **Pendiente:** cómo generar `.xlsx` (dependencia pequeña frente a un escritor propio) se decidirá y
-  justificará al implementarlo. Antes hay que medir cuántos clientes tiene un negocio real: con pocos
-  cientos basta con que Claude arme el archivo en el chat a partir de `restobar_list_clients`.
+- **Decisión del propietario (2026-09-29):** con miles de clientes el MCP debe decir que no puede
+  traerlos al chat y ofrecer exportarlos a Excel o resumirlos.
+- **Por qué en el servidor y no en el asistente:** un MCP es el puente, pero el asistente solo puede
+  trabajar con lo que pasa por la conversación. Para armar un Excel o contar miles de clientes tendría
+  que recibirlos todos (lento, costoso, se trunca y expone los datos al proveedor del modelo). El servidor
+  ya tiene los datos a mano: los agrega o los escribe en disco y al modelo solo le entrega el resultado.
+- **Implementación:**
+  - `.xlsx` real con un escritor propio (`src/export/xlsx.ts`, unas 200 líneas sobre `node:zlib`:
+    `deflateRawSync` y `crc32`) en lugar de una dependencia: las librerías de Excel traen decenas de
+    dependencias transitivas para una hoja de texto. Se descartó CSV: en Excel con configuración regional
+    de Colombia el separador de listas es `;`, y además convierte teléfonos y documentos en números
+    (pierde ceros a la izquierda). Validado con `openpyxl` (30 000 filas, caracteres especiales).
+  - Los textos van como `inlineStr`: Excel nunca los evalúa como fórmula, así que no hace falta alterar
+    celdas que empiezan con `=`, `+`, `-` o `@`.
+  - Descarga en lotes de 500 (la API admite hasta 10 000; 500 deja margen al límite de 5 MB por
+    respuesta), en secuencia, con máximo 50 000 clientes (100 solicitudes). Deduplica por `_id` e informa
+    `complete: false` si Restobar entrega menos de lo que dice su `count`.
+  - Carpeta: `LOGGRO_EXPORT_DIR` o, por omisión, `~/Downloads/MCP-Loggro`. Con
+    `LOGGRO_REDACT_PERSONAL_DATA=true` se omiten las columnas personales.
+  - Los listados avisan (`pagination.notice`) cuando el total supera 200 y las instrucciones del servidor
+    piden no recorrer decenas de páginas.
 
 ## ADR-016 · Varias sucursales, cada una con su token
 

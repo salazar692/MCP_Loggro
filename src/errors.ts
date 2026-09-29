@@ -10,7 +10,8 @@ export type LoggroErrorKind =
   | 'unavailable'
   | 'bad_request'
   | 'invalid_response'
-  | 'blocked';
+  | 'blocked'
+  | 'export';
 
 /**
  * Error tipado de MCP_Loggro. `message` es seguro para mostrar: nunca contiene
@@ -38,6 +39,7 @@ const GENERIC_MESSAGES: Record<LoggroErrorKind, string> = {
   bad_request: 'Restobar rechazó los parámetros de la consulta.',
   invalid_response: 'Restobar devolvió una respuesta con un formato inesperado.',
   blocked: 'Operación bloqueada: MCP_Loggro solo permite consultas de lectura.',
+  export: 'No se pudo generar el archivo de exportación.',
 };
 
 /** Mensaje para el modelo o el usuario final, sin detalles internos. */

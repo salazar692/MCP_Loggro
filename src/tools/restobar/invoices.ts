@@ -128,7 +128,13 @@ export function registerInvoiceTools(server: McpServer, ctx: RestobarToolContext
         });
         return {
           invoices: page.data.map((inv) => toSummary(inv, ctx.redactPersonalData)),
-          pagination: pageInfo(args.page, args.pageSize, page.count, page.data.length),
+          pagination: pageInfo(
+            args.page,
+            args.pageSize,
+            page.count,
+            page.data.length,
+            'No recorras todas las páginas para contar o sumar: total ya es el conteo y restobar_sales_by_day da las ventas por día. Para revisar facturas concretas, afina con fechas, estado, cliente o método de pago.',
+          ),
         };
       }),
   );

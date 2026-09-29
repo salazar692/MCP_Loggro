@@ -1,3 +1,6 @@
+import { homedir } from 'node:os';
+import path from 'node:path';
+
 import { z } from 'zod';
 
 import { LoggroError } from './errors.ts';
@@ -11,10 +14,24 @@ export interface Config {
   restobar: { baseUrl: string; auth: RestobarAuth };
   redactPersonalData: boolean;
   timeZone: string;
+  /** Carpeta local donde se guardan las exportaciones (ruta absoluta). */
+  exportDir: string;
   logLevel: LogLevel;
 }
 
 export const DEFAULT_RESTOBAR_BASE_URL = 'https://api.pirpos.com';
+
+/** Carpeta de exportación por omisión: «Descargas/MCP-Loggro» del usuario. */
+export function defaultExportDir(): string {
+  return path.join(homedir(), 'Downloads', 'MCP-Loggro');
+}
+
+/** Admite `~` como atajo de la carpeta personal (los clientes MCP no lo expanden). */
+function expandHome(dir: string): string {
+  return dir === '~' || dir.startsWith('~/') || dir.startsWith('~\\')
+    ? path.join(homedir(), dir.slice(1))
+    : dir;
+}
 
 // Variables vacías (p. ej. copiadas de .env.example) cuentan como no definidas.
 const optionalText = z.preprocess(
@@ -46,6 +63,10 @@ const EnvSchema = z.object({
   LOGGRO_TIMEZONE: optionalText.refine(
     (v) => v === undefined || isValidTimeZone(v),
     'no es una zona horaria IANA válida (p. ej. America/Bogota)',
+  ),
+  LOGGRO_EXPORT_DIR: optionalText.refine(
+    (v) => v === undefined || path.isAbsolute(expandHome(v)),
+    'debe ser una ruta absoluta (p. ej. C:\\Users\\ana\\Documents\\Loggro o ~/Documentos/Loggro)',
   ),
   LOG_LEVEL: optionalText.refine(
     (v) => v === undefined || ['debug', 'info', 'warn', 'error'].includes(v),
@@ -97,6 +118,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     redactPersonalData: e.LOGGRO_REDACT_PERSONAL_DATA === 'true',
     timeZone: e.LOGGRO_TIMEZONE ?? 'America/Bogota',
+    exportDir: e.LOGGRO_EXPORT_DIR ? expandHome(e.LOGGRO_EXPORT_DIR) : defaultExportDir(),
     logLevel: (e.LOG_LEVEL as LogLevel | undefined) ?? 'info',
   };
 }

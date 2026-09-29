@@ -1,8 +1,7 @@
 # Diseño de herramientas MCP
 
-> **Estado:** las 8 herramientas **P1** (excepto `restobar_export_clients`) están implementadas en
-> `src/tools/restobar/` y probadas sin red; falta la verificación contra la API real. P2 y exportación
-> siguen como diseño. Cada herramienta se basa en un endpoint documentado oficialmente (enlace en la tabla).
+> **Estado:** las 10 herramientas **P1** están implementadas en `src/tools/restobar/` y probadas sin
+> red; falta la verificación contra la API real. P2 sigue como diseño. Cada herramienta se basa en un endpoint documentado oficialmente (enlace en la tabla).
 
 ## 1. Principios
 
@@ -20,7 +19,9 @@
    IDs como `string` no vacía y rangos acotados.
 6. **Paginación homogénea** para el modelo, sin importar el producto: `page` (desde **1**) y `pageSize`
    (por defecto 20, **máximo 50**, límite propio aunque la API acepte miles). La salida incluye
-   `pagination: { page, pageSize, total, hasMore }`.
+   `pagination: { page, pageSize, total, hasMore }` y, si `total` supera 200, un `notice` que le pide al
+   modelo no recorrer todas las páginas y le indica la alternativa (exportar, resumir o filtrar).
+   `total` sirve para contar sin descargar.
 7. **Salida estructurada** (`structuredContent` con `outputSchema`) más un resumen breve en texto. Solo
    campos seleccionados; nunca el objeto crudo de la API.
 8. **Secretos siempre fuera; datos personales incluidos** salvo `LOGGRO_REDACT_PERSONAL_DATA=true`
@@ -56,7 +57,8 @@ los reportes que requieren plan premium.
 | `restobar_list_clients` | Buscar clientes por nombre o documento, para filtrar facturas por cliente. | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)) | trial: solo 24 h; **datos personales** |
 | `restobar_list_payment_methods` | Listar métodos de pago (valores válidos para filtrar facturas). | `GET /paymentMethods` ([consultarmetodospago](https://developer.loggro.com/reference/consultarmetodospago)) | sin paginación |
 | `restobar_sales_by_day` | Totales de facturación por día en un rango. | `GET /stats/totalInvoicesByDays` ([gettotalinvoicesbydays](https://developer.loggro.com/reference/gettotalinvoicesbydays)) | permiso `ST_GET_SALES` |
-| `restobar_export_clients` | Exportar **todos** los clientes a un archivo Excel local, sin pasar los datos por el modelo (ADR-015). | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)), todas las páginas | escribe en disco local; trial: solo 24 h |
+| `restobar_clients_summary` | Cifras de **todos** los clientes (total, empresas, datos de contacto, nuevos por mes y año, ciudades, puntos) sin pasar los registros por el modelo. | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)), lotes de 500 | máx 50 000 clientes; trial: solo 24 h |
+| `restobar_export_clients` | Exportar **todos** los clientes a un archivo Excel local, sin pasar los datos por el modelo (ADR-015). | `GET /clients` ([consultarclientes](https://developer.loggro.com/reference/consultarclientes)), lotes de 500 | escribe en disco local; máx 50 000 clientes; trial: solo 24 h |
 
 ### P2
 

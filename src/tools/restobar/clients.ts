@@ -44,7 +44,9 @@ export function registerClientTools(server: McpServer, ctx: RestobarToolContext)
         redact
           ? '(en este servidor están ocultos: se devuelven como null).'
           : '(datos personales: úsalos solo para lo que pidió el usuario).',
-        'El id sirve para filtrar facturas con restobar_list_invoices. Solo lectura.',
+        'El id sirve para filtrar facturas con restobar_list_invoices. pagination.total indica cuántos',
+        'clientes hay. Para la lista completa usa restobar_export_clients; para cifras, restobar_clients_summary.',
+        'Solo lectura.',
         UNTRUSTED_NOTE,
       ].join(' '),
       inputSchema: {
@@ -81,7 +83,13 @@ export function registerClientTools(server: McpServer, ctx: RestobarToolContext)
             loyaltyPoints: c.points ?? null,
             createdOn: c.createdOn ?? null,
           })),
-          pagination: pageInfo(args.page, args.pageSize, page.count, page.data.length),
+          pagination: pageInfo(
+            args.page,
+            args.pageSize,
+            page.count,
+            page.data.length,
+            'No recorras todas las páginas para armar el listado en la conversación: para la lista completa usa restobar_export_clients (archivo Excel en el computador del usuario), para cifras usa restobar_clients_summary, o afina con search.',
+          ),
         };
       }),
   );

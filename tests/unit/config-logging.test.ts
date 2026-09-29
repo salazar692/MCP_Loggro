@@ -1,6 +1,9 @@
+import { homedir } from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { loadConfig } from '../../src/config.ts';
+import { defaultExportDir, loadConfig } from '../../src/config.ts';
 import { createLogger, redactSecrets } from '../../src/logging.ts';
 
 describe('loadConfig', () => {
@@ -29,6 +32,18 @@ describe('loadConfig', () => {
     expect(() =>
       loadConfig({ LOGGRO_RESTOBAR_TOKEN: 't', LOGGRO_RESTOBAR_BASE_URL: 'http://x.test' }),
     ).toThrow(/https/);
+  });
+
+  it('carpeta de exportación: Descargas por omisión, admite ~ y exige ruta absoluta', () => {
+    const base = { LOGGRO_RESTOBAR_TOKEN: 't' };
+    expect(loadConfig(base).exportDir).toBe(defaultExportDir());
+    expect(defaultExportDir()).toBe(path.join(homedir(), 'Downloads', 'MCP-Loggro'));
+    expect(loadConfig({ ...base, LOGGRO_EXPORT_DIR: '~/Loggro' }).exportDir).toBe(
+      path.join(homedir(), 'Loggro'),
+    );
+    expect(() => loadConfig({ ...base, LOGGRO_EXPORT_DIR: 'relativa/carpeta' })).toThrow(
+      /LOGGRO_EXPORT_DIR/,
+    );
   });
 
   it('nunca incluye el valor de un secreto en el mensaje de error', () => {

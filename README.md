@@ -37,8 +37,8 @@ implementarán hasta que alguien con acceso pueda verificarlos.
 
 ## Herramientas disponibles
 
-Todas son de **solo lectura**. Las fechas se escriben como `YYYY-MM-DD` en la zona horaria del
-negocio (por defecto `America/Bogota`).
+Todas son de **solo lectura en Loggro**. Las fechas se escriben como `YYYY-MM-DD` en la zona horaria
+del negocio (por defecto `America/Bogota`).
 
 | Herramienta | Para qué sirve |
 | --- | --- |
@@ -49,7 +49,17 @@ negocio (por defecto `America/Bogota`).
 | `restobar_list_payment_methods` | Listar métodos de pago |
 | `restobar_list_orders` | Buscar pedidos por fechas, estado, mesa o producto |
 | `restobar_list_clients` | Buscar clientes por nombre, documento o teléfono |
+| `restobar_clients_summary` | Cifras de todos los clientes: total, datos de contacto, nuevos por mes, ciudades |
+| `restobar_export_clients` | Guardar todos los clientes en un Excel (`.xlsx`) en tu computador |
 | `restobar_sales_by_day` | Total facturado por día en un rango de fechas |
+
+**Listados grandes.** Un chat no puede mostrar miles de registros: sería lento, costoso y se cortaría.
+Cuando un listado supera 200 resultados, el servidor se lo advierte al asistente y le indica qué
+hacer en su lugar: exportar a Excel, pedir un resumen o filtrar. La exportación descarga los clientes
+en lotes de 500 (máximo 50 000) y guarda el archivo **en tu computador, sin pasar los datos por el
+chat**; al asistente solo le llegan la ruta del archivo y el número de filas. Nunca sobrescribe un
+archivo existente, y tu cliente MCP puede pedirte confirmación antes de crearlo, porque es la única
+herramienta que escribe algo (en tu equipo, nunca en Loggro).
 
 Diseño y catálogo planeado en [`docs/tool-design.md`](docs/tool-design.md).
 
@@ -102,6 +112,7 @@ Variables de entorno (ver [`.env.example`](.env.example)):
 | `LOGGRO_RESTOBAR_BASE_URL` | URL base oficial, `https://api.pirpos.com`. |
 | `LOGGRO_REDACT_PERSONAL_DATA` | `true` para ocultar documento, correo, teléfono y dirección de clientes y proveedores. |
 | `LOGGRO_TIMEZONE` | Zona horaria para interpretar las fechas. Por defecto `America/Bogota`. |
+| `LOGGRO_EXPORT_DIR` | Carpeta donde se guardan las exportaciones (ruta absoluta; admite `~`). Por defecto `Descargas/MCP-Loggro` (`~/Downloads/MCP-Loggro`). |
 | `LOG_LEVEL` | `debug`, `info`, `warn` o `error` (los logs van siempre a stderr). |
 
 El token es la opción recomendada: la contraseña no queda guardada en la configuración del cliente.
@@ -117,8 +128,8 @@ Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`]
 - **Datos:** todo lo que devuelvan las herramientas llega al proveedor del modelo de IA que uses,
   **incluidos los datos personales de tus clientes y proveedores** (documento, correo, teléfono). Tú
   decides si eso es aceptable para tu negocio; puedes ocultarlos con `LOGGRO_REDACT_PERSONAL_DATA=true`.
-  Para listados grandes (p. ej. exportar clientes a Excel) está en estudio una exportación que guarde
-  el archivo en tu equipo sin pasar los datos por el modelo.
+  La exportación a Excel es la excepción: guarda los datos en tu equipo sin pasarlos por el modelo
+  (con `LOGGRO_REDACT_PERSONAL_DATA=true` el archivo tampoco incluye los datos personales).
 - **Prompt injection:** el contenido de Loggro (nombres, notas, descripciones) se trata como dato, nunca
   como instrucción.
 

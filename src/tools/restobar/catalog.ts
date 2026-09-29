@@ -83,7 +83,13 @@ export function registerCatalogTools(server: McpServer, ctx: RestobarToolContext
               price: l.price ?? null,
             })),
           })),
-          pagination: pageInfo(args.page, args.pageSize, page.count, page.data.length),
+          pagination: pageInfo(
+            args.page,
+            args.pageSize,
+            page.count,
+            page.data.length,
+            'No recorras todas las páginas: afina con search o categoryId.',
+          ),
         };
       }),
   );
