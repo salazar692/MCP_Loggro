@@ -82,10 +82,17 @@ describe('servidor MCP', () => {
             number: '120',
             total: 50000,
             totalPaid: 50000,
+            subTotal: 48000,
+            totalDiscount: 0,
+            totalTaxes: 0,
+            tip: 2000,
+            paymentMethod: 'Efectivo',
+            seller: { idInternal: 's1', name: 'Vendedor Demo' },
             status: 'Pagada',
-            type: 'Normal',
+            type: 'Factura',
             createdOn: '2026-09-28T18:00:00.000Z',
-            client: { idInternal: 'c1', name: 'Cliente Demo', phone: '3000000000' },
+            // Forma real: el cliente embebido no trae ID.
+            client: { name: 'Cliente Demo', phone: '3000000000' },
             business: { nit: '900000000', address: 'Calle 1' },
             eInvoice: { DIAN: { dianState: '00' } },
           },
@@ -105,11 +112,17 @@ describe('servidor MCP', () => {
           prefix: 'FV',
           number: '120',
           status: 'Pagada',
-          type: 'Normal',
+          type: 'Factura',
+          subTotal: 48000,
+          totalDiscount: 0,
+          totalTaxes: 0,
+          tip: 2000,
           total: 50000,
           totalPaid: 50000,
+          paymentMethod: 'Efectivo',
+          seller: 'Vendedor Demo',
           createdOn: '2026-09-28T18:00:00.000Z',
-          client: { id: 'c1', name: 'Cliente Demo', phone: '3000000000' },
+          client: { id: null, name: 'Cliente Demo', phone: '3000000000' },
           table: null,
           dianState: '00',
         },
@@ -190,8 +203,16 @@ describe('servidor MCP', () => {
                 {
                   _id: 'p1',
                   name: 'Producto',
+                  price: 12000,
+                  inventoryType: 'PerUnit',
                   category: { _id: 'cat1', name: 'Categoría' },
-                  locationsStock: [{ locationStock: 'loc1', isMain: true }],
+                  locationsStock: [
+                    {
+                      locationStock: { _id: 'loc1', name: 'Bodega' },
+                      isMain: true,
+                      tax: { name: 'Impoconsumo', percentage: 8 },
+                    },
+                  ],
                 },
               ],
               count: 1,
@@ -202,7 +223,66 @@ describe('servidor MCP', () => {
     expect(orders.structuredContent).toMatchObject({ orders: [{ complementary: true }] });
     const products = await client.callTool({ name: 'restobar_list_products', arguments: {} });
     expect(products.structuredContent).toMatchObject({
-      products: [{ categoryId: 'cat1', locations: [{ locationId: 'loc1' }] }],
+      products: [
+        {
+          categoryId: 'cat1',
+          categoryName: 'Categoría',
+          price: 12000,
+          inventoryType: 'PerUnit',
+          locations: [
+            {
+              locationId: 'loc1',
+              locationName: 'Bodega',
+              taxName: 'Impoconsumo',
+              taxPercentage: 8,
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('restobar_get_invoice: productos, desglose de pagos y vendedor con la forma real', async () => {
+    const { client, calls } = await connect(() => ({
+      body: {
+        _id: 'f1',
+        seller: { idInternal: 's1', name: 'Vendedor Demo' },
+        paymentMethod: 'Efectivo',
+        paid: {
+          createdOn: '2026-09-28T18:00:00.000Z',
+          paymentMethodValue: [{ paymentMethod: 'Efectivo', value: 50000, tip: 2000 }],
+        },
+        products: [
+          {
+            idInternal: 'p1',
+            name: 'Producto',
+            categoryName: 'Categoría',
+            quantity: 2,
+            price: 24000,
+            discount: 0,
+            total: 48000,
+          },
+        ],
+      },
+    }));
+    const result = await client.callTool({ name: 'restobar_get_invoice', arguments: { id: 'f1' } });
+    expect(calls[0]?.url.pathname).toBe('/invoices/f1');
+    expect(result.structuredContent).toMatchObject({
+      invoice: {
+        seller: 'Vendedor Demo',
+        paymentMethod: 'Efectivo',
+        payments: [{ method: 'Efectivo', value: 50000, tip: 2000 }],
+        products: [
+          {
+            id: 'p1',
+            category: 'Categoría',
+            quantity: 2,
+            unitPrice: 24000,
+            discount: 0,
+            total: 48000,
+          },
+        ],
+      },
     });
   });
 

@@ -160,6 +160,7 @@ conteos, nunca datos.
 | --- | --- |
 | [`docs/loggro-api/README.md`](docs/loggro-api/README.md) | Investigación de la API oficial: productos, autenticación, paginación, errores y límites |
 | [`docs/loggro-api/inventory/`](docs/loggro-api/inventory/README.md) | Inventario de los 629 endpoints documentados, con clasificación de lectura o escritura |
+| [`docs/restobar-data-map.md`](docs/restobar-data-map.md) | Cómo llega cada dato de la API real de Restobar y cómo queda mapeado en las herramientas y el Excel |
 | [`docs/architecture.md`](docs/architecture.md) | Arquitectura, flujo de datos, manejo de errores y estrategia de pruebas |
 | [`docs/security.md`](docs/security.md) | Modelo de amenazas, credenciales y privacidad |
 | [`docs/tool-design.md`](docs/tool-design.md) | Principios y catálogo propuesto de herramientas |

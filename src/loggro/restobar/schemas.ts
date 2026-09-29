@@ -11,9 +11,17 @@ const num = z.number().nullish().catch(null);
 const bool = z.boolean().nullish().catch(null);
 const id = z.string().catch('');
 const obj = <T extends z.ZodRawShape>(shape: T) => z.looseObject(shape).nullish().catch(null);
-/** Referencia a otro documento: ID en texto o, si Restobar la puebla, objeto con `_id`. */
+/**
+ * Referencia a otro documento. `GET /products` la entrega poblada (`{ _id, name, ... }`); otros
+ * endpoints, como ID en texto. Se normaliza a `{ id, name }`.
+ */
 const ref = z
-  .union([z.string(), z.looseObject({ _id: z.string() }).transform((o) => o._id)])
+  .union([
+    z.string().transform((id) => ({ id, name: null as string | null })),
+    z
+      .looseObject({ _id: z.string(), name: str })
+      .transform((o) => ({ id: o._id, name: o.name ?? null })),
+  ])
   .nullish()
   .catch(null);
 
@@ -26,11 +34,34 @@ export const Invoice = z.looseObject({
   status: str,
   type: str,
   createdOn: str,
+  subTotal: num,
+  totalTaxes: num,
+  totalDiscount: num,
+  tip: num,
+  paymentMethod: str,
+  paid: obj({
+    paymentMethodValue: z
+      .array(z.looseObject({ paymentMethod: str, value: num, tip: num }))
+      .nullish()
+      .catch(null),
+  }),
   table: obj({ idInternal: str, name: str }),
+  // Confirmado con la API real: el cliente embebido no trae ID.
   client: obj({ idInternal: str, name: str, phone: str }),
   cashier: obj({ idInternal: str, name: str }),
+  seller: obj({ idInternal: str, name: str }),
   products: z
-    .array(z.looseObject({ idInternal: str, name: str, quantity: num, price: num }))
+    .array(
+      z.looseObject({
+        idInternal: str,
+        name: str,
+        categoryName: str,
+        quantity: num,
+        price: num,
+        discount: num,
+        total: num,
+      }),
+    )
     .nullish()
     .catch(null),
   delivery: obj({ isDelivery: bool, deliveryProvider: str }),
@@ -50,6 +81,8 @@ export const Product = z.looseObject({
   stock: num,
   stockMinimum: num,
   pricePurchase: num,
+  price: num,
+  inventoryType: str,
   locationsStock: z
     .array(
       z.looseObject({
@@ -58,6 +91,7 @@ export const Product = z.looseObject({
         stock: num,
         stockMinimum: num,
         price: num,
+        tax: obj({ name: str, percentage: num }),
       }),
     )
     .nullish()

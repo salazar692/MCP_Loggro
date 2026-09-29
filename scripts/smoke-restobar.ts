@@ -37,10 +37,15 @@ import { silentLogger } from '../src/logging.ts';
 import { createServer } from '../src/server.ts';
 import { BULK_PAGE_SIZE } from '../src/tools/restobar/clients-bulk.ts';
 
-const MAX_REQUESTS_PER_TOOL = 5;
+// SMOKE_MAX_REQUESTS y SMOKE_LEDGER permiten una ronda aparte con su propio tope, sin tocar el historial.
+const MAX_REQUESTS_PER_TOOL = Number(process.env.SMOKE_MAX_REQUESTS ?? 5);
 // Con SMOKE_RAW_SHAPE=1 conviene ver más registros por solicitud (el costo es el mismo).
 const PAGE_SIZE = process.env.SMOKE_RAW_SHAPE === '1' ? 50 : 2;
-const LEDGER = path.resolve(import.meta.dirname, '../.cache/restobar-smoke-ledger.json');
+const LEDGER = path.resolve(
+  import.meta.dirname,
+  '../.cache',
+  process.env.SMOKE_LEDGER ?? 'restobar-smoke-ledger.json',
+);
 
 type Args = Record<string, unknown>;
 interface Step {
@@ -129,17 +134,49 @@ type RawShape = string | { [key: string]: RawShape } | { '[]': RawShape };
  * Campos y tipos de una respuesta cruda, combinando TODOS los elementos de cada arreglo: un campo
  * vacío en el primero no oculta su tipo real. Tipos distintos se unen con «|». Nunca incluye valores.
  */
-function rawShape(value: unknown, depth = 0): RawShape {
+function rawShape(value: unknown, depth = 0, key = ''): RawShape {
   if (value === null || value === undefined) return 'null';
   if (Array.isArray(value)) {
     if (value.length === 0) return 'array(0)';
-    return { '[]': value.map((v) => rawShape(v, depth + 1)).reduce(mergeShape) };
+    return { '[]': value.map((v) => rawShape(v, depth + 1, key)).reduce(mergeShape) };
   }
   if (typeof value === 'object') {
     if (depth >= 6) return 'object';
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, rawShape(v, depth + 1)]));
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, rawShape(v, depth + 1, k)]),
+    );
   }
+  if (typeof value === 'string') return stringFormat(key, value);
+  if (typeof value === 'number') return Number.isInteger(value) ? 'number:int' : 'number:dec';
   return typeof value;
+}
+
+// Campos de catálogo (estados, tipos): se muestran sus valores, que no son datos de personas.
+const ENUM_KEYS = new Set([
+  'status',
+  'type',
+  'printType',
+  'timeZone',
+  'inventoryType',
+  'documentName',
+  'countryCode',
+  'typePersona',
+  'role',
+]);
+
+/** Formato de un texto sin revelarlo (salvo campos de catálogo). */
+function stringFormat(key: string, v: string): string {
+  if (ENUM_KEYS.has(key) && v.length <= 40) return `enum:${v}`;
+  if (v === '') return 'string:vacío';
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})$/.test(v)) {
+    return v.endsWith('Z') ? 'string:iso-utc' : 'string:iso-offset';
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return 'string:fecha';
+  if (/^[0-9a-f]{24}$/.test(v)) return 'string:objectId';
+  if (/^[0-9a-f-]{36}$/i.test(v)) return 'string:uuid';
+  if (/^\d+$/.test(v)) return 'string:dígitos';
+  if (/^https?:\/\//.test(v)) return 'string:url';
+  return 'string:texto';
 }
 
 function mergeShape(a: RawShape, b: RawShape): RawShape {

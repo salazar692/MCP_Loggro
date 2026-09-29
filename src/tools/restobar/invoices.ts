@@ -23,11 +23,23 @@ const InvoiceSummary = z.object({
   prefix: nullableText,
   number: nullableText,
   status: nullableText.describe('Pendiente, Pagada o Anulada.'),
-  type: nullableText.describe('Normal o FacturaElectronica.'),
+  type: nullableText.describe('Tipo de documento tal como lo guarda Restobar (p. ej. «Factura»).'),
+  subTotal: z.number().nullable(),
+  totalDiscount: z.number().nullable(),
+  totalTaxes: z.number().nullable(),
+  tip: z.number().nullable().describe('Propina.'),
   total: z.number().nullable(),
   totalPaid: z.number().nullable(),
+  paymentMethod: nullableText.describe('Método de pago (nombre).'),
+  seller: nullableText.describe('Vendedor.'),
   createdOn: nullableText,
-  client: z.object({ id: nullableText, name: nullableText, phone: nullableText }).nullable(),
+  client: z
+    .object({
+      id: nullableText.describe('Restobar no lo envía en la factura: normalmente null.'),
+      name: nullableText,
+      phone: nullableText,
+    })
+    .nullable(),
   table: z.object({ id: nullableText, name: nullableText }).nullable(),
   dianState: nullableText.describe('Estado de la factura electrónica ante la DIAN, si aplica.'),
 });
@@ -37,10 +49,18 @@ const InvoiceDetail = InvoiceSummary.extend({
     z.object({
       id: nullableText,
       name: nullableText,
+      category: nullableText,
       quantity: z.number().nullable(),
       unitPrice: z.number().nullable(),
+      discount: z.number().nullable(),
+      total: z.number().nullable(),
     }),
   ),
+  payments: z
+    .array(
+      z.object({ method: nullableText, value: z.number().nullable(), tip: z.number().nullable() }),
+    )
+    .describe('Desglose del pago por método.'),
   cashier: nullableText,
   isDelivery: z.boolean().nullable(),
   deliveryProvider: nullableText,
@@ -55,8 +75,14 @@ function toSummary(inv: Invoice, redact: boolean): z.infer<typeof InvoiceSummary
     number: inv.number == null ? null : String(inv.number),
     status: inv.status ?? null,
     type: inv.type ?? null,
+    subTotal: inv.subTotal ?? null,
+    totalDiscount: inv.totalDiscount ?? null,
+    totalTaxes: inv.totalTaxes ?? null,
+    tip: inv.tip ?? null,
     total: inv.total ?? null,
     totalPaid: inv.totalPaid ?? null,
+    paymentMethod: inv.paymentMethod ?? null,
+    seller: inv.seller?.name ?? null,
     createdOn: inv.createdOn ?? null,
     client: inv.client
       ? {
@@ -76,8 +102,16 @@ function toDetail(inv: Invoice, redact: boolean): z.infer<typeof InvoiceDetail> 
     products: (inv.products ?? []).map((p) => ({
       id: p.idInternal ?? null,
       name: p.name ?? null,
+      category: p.categoryName ?? null,
       quantity: p.quantity ?? null,
       unitPrice: p.price ?? null,
+      discount: p.discount ?? null,
+      total: p.total ?? null,
+    })),
+    payments: (inv.paid?.paymentMethodValue ?? []).map((pm) => ({
+      method: pm.paymentMethod ?? null,
+      value: pm.value ?? null,
+      tip: pm.tip ?? null,
     })),
     cashier: inv.cashier?.name ?? null,
     isDelivery: inv.delivery?.isDelivery ?? null,
