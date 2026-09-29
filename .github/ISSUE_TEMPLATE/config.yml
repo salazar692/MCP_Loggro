@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reportar una vulnerabilidad (privado)
+    url: https://github.com/salazar692/MCP_Loggro/security/advisories/new
+    about: No reportes problemas de seguridad en issues públicos.

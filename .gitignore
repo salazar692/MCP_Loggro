@@ -1,3 +1,6 @@
+# MCP_Loggro: documentación de Loggro descargada por scripts/sync-loggro-docs.ts
+.cache/
+
 # Logs
 logs
 *.log

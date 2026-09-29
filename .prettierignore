@@ -1,0 +1,4 @@
+package-lock.json
+# Markdown se edita a mano: Prettier alinea las tablas anchas y convierte cada
+# cambio de una celda en un diff de la tabla completa.
+*.md

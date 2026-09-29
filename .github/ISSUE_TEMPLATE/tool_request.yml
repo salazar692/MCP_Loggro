@@ -1,0 +1,49 @@
+name: Solicitud de herramienta
+description: Proponer una nueva herramienta MCP de solo lectura.
+labels: [tool-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Las herramientas deben basarse en endpoints **documentados oficialmente** en
+        https://developer.loggro.com y clasificados como `lectura` en `docs/loggro-api/inventory/`.
+        Ver `docs/tool-design.md`.
+  - type: textarea
+    id: consulta
+    attributes:
+      label: Pregunta de usuario que resuelve
+      placeholder: '«¿Qué facturas quedaron pendientes ayer?»'
+    validations:
+      required: true
+  - type: dropdown
+    id: producto
+    attributes:
+      label: Producto de Loggro
+      options:
+        - Restobar
+        - PYMES
+        - Enterprise
+        - Nómina
+        - Documentos Electrónicos
+        - Otro
+    validations:
+      required: true
+  - type: input
+    id: endpoint
+    attributes:
+      label: Página oficial del endpoint
+      placeholder: https://developer.loggro.com/reference/...
+    validations:
+      required: true
+  - type: textarea
+    id: datos
+    attributes:
+      label: Datos sensibles en la respuesta
+      description: ¿Devuelve datos personales, financieros o secretos? ¿Cuáles deberían omitirse?
+  - type: checkboxes
+    id: confirmacion
+    attributes:
+      label: Confirmación
+      options:
+        - label: El endpoint es de solo lectura según su documentación y su clase en el inventario.
+          required: true

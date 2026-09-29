@@ -1,0 +1,44 @@
+name: Reporte de error
+description: Algo no funciona como se espera.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ⚠️ **No pegues credenciales, tokens ni datos reales de clientes o del negocio.**
+        Para vulnerabilidades de seguridad usa el reporte privado (ver SECURITY.md).
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: ¿Qué pasó y qué esperabas que pasara?
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      placeholder: |
+        1. Cliente MCP usado…
+        2. Herramienta invocada y argumentos (sin datos reales)…
+    validations:
+      required: true
+  - type: input
+    id: entorno
+    attributes:
+      label: Entorno
+      placeholder: 'Versión de MCP_Loggro o commit, Node.js, sistema operativo, cliente MCP'
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (redactados)
+      render: text
+  - type: checkboxes
+    id: confirmacion
+    attributes:
+      label: Confirmación
+      options:
+        - label: Revisé que este reporte no contiene credenciales, tokens ni datos personales o empresariales reales.
+          required: true

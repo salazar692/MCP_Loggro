@@ -1,0 +1,46 @@
+{
+  "name": "mcp-loggro",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Servidor MCP de código abierto y solo lectura para consultar Loggro desde asistentes de IA.",
+  "license": "MIT",
+  "author": "Andrew",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salazar692/MCP_Loggro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/salazar692/MCP_Loggro/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "loggro",
+    "restobar",
+    "colombia"
+  ],
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "docs:sync": "node scripts/sync-loggro-docs.ts",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.4",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.2"
+  }
+}
