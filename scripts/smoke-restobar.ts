@@ -17,7 +17,8 @@
  *   clientes cabe en el presupuesto; el archivo exportado se verifica y se borra.
  *
  * Uso: node --env-file=.env scripts/smoke-restobar.ts [herramienta ...]
- *      node scripts/smoke-restobar.ts [herramienta ...]   (credencial del entorno)
+ *      NODE_USE_ENV_PROXY=1 node scripts/smoke-restobar.ts [herramienta ...]   (nube, detrás de proxy)
+ * Con SMOKE_RAW_SHAPE=1 imprime además los campos y tipos de la respuesta cruda (sin valores).
  */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -182,6 +183,13 @@ function describeToken(token: string): void {
 
 async function main(): Promise<void> {
   const env = process.env;
+  // El `fetch` de Node ignora HTTPS_PROXY salvo con NODE_USE_ENV_PROXY=1. En la nube, el proxy es
+  // quien pone el token real: sin él Restobar recibe el marcador y responde 403.
+  if ((env.HTTPS_PROXY || env.https_proxy) && env.NODE_USE_ENV_PROXY !== '1') {
+    throw new Error(
+      'Hay HTTPS_PROXY pero falta NODE_USE_ENV_PROXY=1: no se envió ninguna solicitud.',
+    );
+  }
   const injected =
     !env.LOGGRO_RESTOBAR_TOKEN && !env.LOGGRO_RESTOBAR_EMAIL && !env.LOGGRO_RESTOBAR_PASSWORD;
   // Con credencial del entorno el valor es un marcador: nunca se envía (ver token más abajo).
@@ -227,6 +235,14 @@ async function main(): Promise<void> {
     const res = await fetch(url, init);
     const bytes = (await res.clone().arrayBuffer()).byteLength;
     console.log(`  ← HTTP ${res.status}, ${(bytes / 1024).toFixed(1)} KB`);
+    if (process.env.SMOKE_RAW_SHAPE === '1' && res.ok) {
+      // Campos y tipos de la respuesta cruda (sin valores): contrasta la API con schemas.ts.
+      const raw: unknown = await res
+        .clone()
+        .json()
+        .catch(() => null);
+      console.log('  crudo:', JSON.stringify(shape(raw)));
+    }
     return res;
   };
   const exportDir = await mkdtemp(path.join(tmpdir(), 'mcp-loggro-smoke-'));

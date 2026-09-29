@@ -19,7 +19,13 @@ export function registerSalesTools(server: McpServer, ctx: RestobarToolContext):
         dateTo: dateInput.describe('Hasta esta fecha, inclusive (YYYY-MM-DD).'),
       },
       outputSchema: {
-        days: z.array(z.object({ date: z.string().nullable(), total: z.number().nullable() })),
+        days: z.array(
+          z.object({
+            date: z.string().nullable(),
+            total: z.number().nullable(),
+            invoices: z.number().nullable().describe('Número de facturas del día.'),
+          }),
+        ),
         grandTotal: z.number().describe('Suma de los totales diarios.'),
       },
       annotations: READ_ONLY_ANNOTATIONS,
@@ -31,7 +37,11 @@ export function registerSalesTools(server: McpServer, ctx: RestobarToolContext):
           dateInitISO: range.start ?? '',
           dateEndISO: range.end ?? '',
         });
-        const rows = days.map((d) => ({ date: d.date ?? null, total: d.total ?? null }));
+        const rows = days.map((d) => ({
+          date: d._id?.dayOfMonth ?? null,
+          total: d.total ?? null,
+          invoices: d.count ?? null,
+        }));
         return { days: rows, grandTotal: rows.reduce((sum, d) => sum + (d.total ?? 0), 0) };
       }),
   );

@@ -151,6 +151,30 @@ describe('servidor MCP', () => {
     expect(JSON.stringify(result.content)).not.toContain('tok');
   });
 
+  it('lee el día de ventas desde _id.dayOfMonth, como responde la API real', async () => {
+    const { client } = await connect(() => ({
+      body: [
+        {
+          _id: { businessId: 'b1', dayOfMonth: '2026-09-27' },
+          total: 100,
+          dateInit: '2026-09-27T05:00:00.000Z',
+          dateEnd: '2026-09-28T04:59:59.999Z',
+          totalWithoutTip: 90,
+          tip: 10,
+          count: 4,
+        },
+      ],
+    }));
+    const result = await client.callTool({
+      name: 'restobar_sales_by_day',
+      arguments: { dateFrom: '2026-09-27', dateTo: '2026-09-27' },
+    });
+    expect(result.structuredContent).toEqual({
+      days: [{ date: '2026-09-27', total: 100, invoices: 4 }],
+      grandTotal: 100,
+    });
+  });
+
   it('valida argumentos antes de llamar a Restobar', async () => {
     const { client, calls } = await connect(() => ({ body: [] }));
     const result = await client.callTool({

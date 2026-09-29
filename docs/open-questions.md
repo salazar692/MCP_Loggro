@@ -18,7 +18,7 @@ decisión, se actualiza [`decisions.md`](./decisions.md).
 **Aceptadas por defecto** (propuestas anteriores sin objeción): PYMES como siguiente producto cuando
 alguien pueda probarlo (A8); nombre `mcp-loggro` en npm (A9); idioma (A10, ADR-012); licencia MIT
 (A11); reporte privado de vulnerabilidades de GitHub (A12); contribuciones externas con `main` protegida
-(A13); pruebas con Claude Desktop, Claude Code y MCP Inspector (A14); Node 22 y 24 (A15); `pageSize`
+(A13); pruebas con Claude Desktop, Claude Code y MCP Inspector (A14); mínimo Node 22.18, CI con 22, 24 y 26 (A15); `pageSize`
 máximo 50 y rango de 93 días (A16); zona horaria `America/Bogota` configurable (A17); pruebas de
 integración solo manuales (A18).
 
@@ -49,6 +49,20 @@ integración solo manuales (A18).
 | C4 | Preguntó dónde quedarían los archivos exportados. | Explicado: con Claude Desktop, el servidor corre en su equipo y guardaría el archivo en una carpeta local; la alternativa es que Claude arme el Excel en el chat. La decisión (ADR-015) depende del número de clientes, que dará la prueba real. |
 | C5 | Propone recibir reportes por GitHub. | GitHub no ofrece mensajes privados y los reportes de conducta no deben ser públicos. Se pospone el Código de Conducta hasta que haya comunidad o un correo del proyecto. |
 | C6 | Tiene **varias sucursales, cada una con su propio token**. | Hoy: un servidor por sucursal en el cliente MCP. Propuesta: soporte multi-sucursal en un solo servidor (ADR-016). |
+
+## E. Confirmado contra la API real (2026-09-29)
+
+Prueba de humo con `scripts/smoke-restobar.ts` (1 solicitud por herramienta, solo lectura). Solo tipos y
+formatos; sin cifras ni datos personales.
+
+| # | Hallazgo | Efecto |
+| --- | --- | --- |
+| E1 | En Claude Code en la nube, `LOGGRO_RESTOBAR_TOKEN` guarda un marcador que el proxy cambia por el token real. El `fetch` de Node no usa `HTTPS_PROXY` salvo con `NODE_USE_ENV_PROXY=1`; sin él, Restobar recibe el marcador y responde `403` «No tienes autorización para acceder a la información.». | El script exige `NODE_USE_ENV_PROXY=1` cuando hay proxy y se detiene antes de la red si falta. |
+| E2 | `GET /stats/totalInvoicesByDays` devuelve un arreglo de `{ _id: { businessId, dayOfMonth }, total, dateInit, dateEnd, totalWithoutTip, tip, count }`; no hay campo `date`. `dayOfMonth` es `YYYY-MM-DD` y los días coinciden con el rango pedido en hora de Colombia. | `restobar_sales_by_day` lee el día de `_id.dayOfMonth` y expone `count` como `invoices`. |
+| E3 | Con `pagination=true`, `/invoices`, `/products`, `/orders` y `/clients` traen el total (`pagination.total`). `/categories` y `/paymentMethods` devuelven un arreglo simple. | Sin cambios. |
+| E4 | `createdOn` llega como ISO 8601 en UTC (`2026-09-29T21:50:32.463Z`). `birthdate` llegó `null` en todos los clientes revisados: su formato sigue sin confirmar. | Sin cambios. |
+| E5 | Siempre `null` en la muestra: `category` y `locationsStock[].locationStock` (productos), `client.idInternal` (facturas), `eInvoice.DIAN.dianState`. Puede ser dato vacío o un tipo distinto (p. ej. objeto poblado) que el esquema convierte en `null`. | Pendiente: verificar con `SMOKE_RAW_SHAPE=1` cuando haya presupuesto. |
+| E6 | `restobar_clients_summary` y `restobar_export_clients` recorren todos los clientes en 2 solicitudes; el archivo es XLSX válido. | Sin cambios. |
 
 ## D. Preguntas pendientes para el propietario (histórico)
 

@@ -100,7 +100,12 @@ export type Client = z.infer<typeof Client>;
 export const PaymentMethod = z.looseObject({ _id: id, name: str });
 export type PaymentMethod = z.infer<typeof PaymentMethod>;
 
-export const DaySales = z.looseObject({ date: str, total: num });
+/** Confirmado con la API real: el día viene en `_id.dayOfMonth`; no hay campo `date`. */
+export const DaySales = z.looseObject({
+  _id: obj({ dayOfMonth: str }),
+  total: num,
+  count: num,
+});
 export type DaySales = z.infer<typeof DaySales>;
 
 /** Página de resultados. `count` es `null` si Restobar devolvió un arreglo sin total. */
