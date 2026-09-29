@@ -2,7 +2,11 @@
  * Prueba de humo contra la API REAL de Restobar, pensada para negocios en
  * producción. Garantías (independientes del código del servidor):
  *
- * - Solo modo token (LOGGRO_RESTOBAR_TOKEN): nunca hace login.
+ * - Nunca hace login. El token llega de una de dos formas:
+ *   a) LOGGRO_RESTOBAR_TOKEN definida: se envía en la cabecera Authorization.
+ *   b) Sin credenciales en el entorno: se asume una credencial del entorno de
+ *      Claude Code en la nube, que el proxy agrega a las solicitudes hacia
+ *      api.pirpos.com. El token nunca está en esta máquina ni se envía cabecera.
  * - Un `fetch` guardián bloquea, ANTES de la red, cualquier método distinto de
  *   GET y cualquier host distinto del configurado.
  * - Presupuesto de solicitudes por herramienta (máximo 5, acumulado entre
@@ -13,6 +17,7 @@
  *   clientes cabe en el presupuesto; el archivo exportado se verifica y se borra.
  *
  * Uso: node --env-file=.env scripts/smoke-restobar.ts [herramienta ...]
+ *      node scripts/smoke-restobar.ts [herramienta ...]   (credencial del entorno)
  */
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -176,11 +181,24 @@ function describeToken(token: string): void {
 }
 
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const env = process.env;
+  const injected =
+    !env.LOGGRO_RESTOBAR_TOKEN && !env.LOGGRO_RESTOBAR_EMAIL && !env.LOGGRO_RESTOBAR_PASSWORD;
+  // Con credencial del entorno el valor es un marcador: nunca se envía (ver token más abajo).
+  const config = loadConfig(
+    injected ? { ...env, LOGGRO_RESTOBAR_TOKEN: 'credencial-del-entorno' } : env,
+  );
   if (config.restobar.auth.mode !== 'token') {
-    throw new Error('La prueba de humo solo usa LOGGRO_RESTOBAR_TOKEN (nunca hace login).');
+    throw new Error('La prueba de humo nunca hace login: usa un token, no usuario y contraseña.');
   }
-  describeToken(config.restobar.auth.token);
+  const token = injected ? '' : config.restobar.auth.token;
+  if (injected) {
+    console.log(
+      'Credencial: la agrega el entorno a las solicitudes hacia la API (el token no está en esta máquina).',
+    );
+  } else {
+    describeToken(token);
+  }
 
   const only = new Set(process.argv.slice(2));
   const plan = only.size ? PLAN.filter((s) => only.has(s.tool)) : PLAN;
@@ -221,7 +239,8 @@ async function main(): Promise<void> {
     logger: silentLogger,
   });
   const server = createServer({
-    restobar: new RestobarClient(http, new StaticTokenProvider(config.restobar.auth.token)),
+    // Token vacío: el cliente HTTP no envía la cabecera Authorization.
+    restobar: new RestobarClient(http, new StaticTokenProvider(token)),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
     exportDir,
