@@ -1,7 +1,8 @@
 # Diseño de herramientas MCP
 
-> **Estado:** diseño propuesto, **sin implementar**. Cada herramienta se basa en un endpoint
-> documentado oficialmente (enlace en la tabla). Nada de este catálogo existe todavía en el código.
+> **Estado:** las 8 herramientas **P1** (excepto `restobar_export_clients`) están implementadas en
+> `src/tools/restobar/` y probadas sin red; falta la verificación contra la API real. P2 y exportación
+> siguen como diseño. Cada herramienta se basa en un endpoint documentado oficialmente (enlace en la tabla).
 
 ## 1. Principios
 

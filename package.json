@@ -1,6 +1,6 @@
 {
   "name": "mcp-loggro",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Servidor MCP de código abierto y solo lectura para consultar Loggro desde asistentes de IA.",
   "license": "MIT",
@@ -20,6 +20,14 @@
     "colombia"
   ],
   "type": "module",
+  "bin": {
+    "mcp-loggro": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22.18.0"
   },
@@ -42,5 +50,9 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
     "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.31.0",
+    "zod": "^4.6.5"
   }
 }

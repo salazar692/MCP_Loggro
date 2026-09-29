@@ -39,7 +39,20 @@ integración solo manuales (A18).
 | B11 | Semántica de `allBusiness` y de los negocios padre/hijo. | Prueba real si el negocio tiene sucursales (C6). |
 | B12 | Nómina: ¿los GET «Calcular …» persisten resultados? | Solo relevante si algún día se incluye Nómina. |
 
-## C. Preguntas pendientes para el propietario
+## C. Respuestas del propietario (2026-09-29, segunda ronda)
+
+| # | Respuesta | Efecto |
+| --- | --- | --- |
+| C1 | Sus automatizaciones obtienen el token con `POST /login` (usuario y clave) y lo **renuevan cada semana**. No sabe si un login nuevo invalida el token anterior. | 🔎 El token dura al menos una semana; `scripts/smoke-restobar.ts` imprime su vigencia real sin revelarlo. Las pruebas usan el token actual (modo token, **sin login**) para no arriesgar las automatizaciones. B2 sigue abierta. |
+| C2 | Plan **premium**. | Se pueden verificar reportes y el historial de cuadres de caja. |
+| C3 | Pruebas reales desde el chat de Claude Code. | El token se configura como variable de entorno del entorno en la nube (nunca pegado en el chat); la variable la toma una sesión nueva. Reglas del propietario: entre 1 y 5 solicitudes por herramienta, solo lectura, nada que modifique. `scripts/smoke-restobar.ts` las hace cumplir. |
+| C4 | Preguntó dónde quedarían los archivos exportados. | Explicado: con Claude Desktop, el servidor corre en su equipo y guardaría el archivo en una carpeta local; la alternativa es que Claude arme el Excel en el chat. La decisión (ADR-015) depende del número de clientes, que dará la prueba real. |
+| C5 | Propone recibir reportes por GitHub. | GitHub no ofrece mensajes privados y los reportes de conducta no deben ser públicos. Se pospone el Código de Conducta hasta que haya comunidad o un correo del proyecto. |
+| C6 | Tiene **varias sucursales, cada una con su propio token**. | Hoy: un servidor por sucursal en el cliente MCP. Propuesta: soporte multi-sucursal en un solo servidor (ADR-016). |
+
+## D. Preguntas pendientes para el propietario (histórico)
+
+Las preguntas de esta sección se respondieron en la sección C.
 
 | # | Pregunta | Por qué importa |
 | --- | --- | --- |

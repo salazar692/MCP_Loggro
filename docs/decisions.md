@@ -141,7 +141,7 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 
 ## ADR-014 · Credenciales de Restobar: token o usuario y contraseña
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada e implementada (`src/config.ts`, `src/loggro/restobar/auth.ts`). El modo token es el recomendado.
 - **Contexto:** Restobar solo documenta `POST /login` con correo y contraseña. El propietario usará su
   propio usuario de producción, que probablemente tenga permisos de escritura, y ya tiene automatizaciones
   con la API.
@@ -169,4 +169,22 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
   usuario, la herramienta declara `readOnlyHint: false` y `destructiveHint: false`; en Loggro sigue siendo
   solo lectura.
 - **Pendiente:** cómo generar `.xlsx` (dependencia pequeña frente a un escritor propio) se decidirá y
-  justificará al implementarlo.
+  justificará al implementarlo. Antes hay que medir cuántos clientes tiene un negocio real: con pocos
+  cientos basta con que Claude arme el archivo en el chat a partir de `restobar_list_clients`.
+
+## ADR-016 · Varias sucursales, cada una con su token
+
+- **Estado:** Propuesta
+- **Contexto:** en Restobar cada sucursal tiene su propio token (respuesta del propietario, 2026-09-29).
+- **Hoy:** se configura un servidor por sucursal en el cliente MCP (`loggro-centro`, `loggro-norte`, …).
+  No requiere código, pero una pregunta como «ventas de todas las sucursales» obliga al modelo a llamar
+  a cada servidor por separado.
+- **Propuesta:** un solo servidor con varias sucursales con nombre (p. ej. `LOGGRO_RESTOBAR_BRANCHES`),
+  un parámetro opcional `branch` en cada herramienta y una herramienta para listar las sucursales
+  configuradas.
+
+## ADR-017 · Dependencias de ejecución
+
+- **Estado:** Aceptada (2026-09-29)
+- **Decisión:** `@modelcontextprotocol/sdk` 1.31 y `zod` 4 (ADR-004 y ADR-005). Ninguna otra.
+  `npm audit`: 0 vulnerabilidades al instalarlas.

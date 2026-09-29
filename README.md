@@ -6,9 +6,8 @@
 (Colombian business software) through the Model Context Protocol.
 
 > [!IMPORTANT]
-> **Estado: fase de preparación.** Todavía **no hay herramientas MCP implementadas**. El repositorio
-> contiene la investigación de la API oficial, la arquitectura propuesta y la infraestructura de
-> desarrollo.
+> **Estado: versión 0.1.0 en validación.** Las 8 herramientas de Restobar están implementadas y
+> probadas sin red. Falta verificarlas contra la API real antes de publicar la primera versión.
 >
 > Proyecto **independiente**, creado por un cliente de Loggro. No es un producto oficial de Loggro S.A.S.
 > ni está afiliado a ella. La documentación oficial de Loggro está en <https://developer.loggro.com>.
@@ -38,8 +37,21 @@ implementarán hasta que alguien con acceso pueda verificarlos.
 
 ## Herramientas disponibles
 
-Ninguna todavía. El catálogo **propuesto** para Restobar está en
-[`docs/tool-design.md`](docs/tool-design.md).
+Todas son de **solo lectura**. Las fechas se escriben como `YYYY-MM-DD` en la zona horaria del
+negocio (por defecto `America/Bogota`).
+
+| Herramienta | Para qué sirve |
+| --- | --- |
+| `restobar_list_invoices` | Buscar facturas por fechas, estado, tipo, cliente, número o método de pago |
+| `restobar_get_invoice` | Ver una factura: productos, cantidades, precios, cajero y estado DIAN |
+| `restobar_list_products` | Buscar productos por nombre, código de barras o categoría, con stock y precios |
+| `restobar_list_categories` | Listar categorías de productos |
+| `restobar_list_payment_methods` | Listar métodos de pago |
+| `restobar_list_orders` | Buscar pedidos por fechas, estado, mesa o producto |
+| `restobar_list_clients` | Buscar clientes por nombre, documento o teléfono |
+| `restobar_sales_by_day` | Total facturado por día en un rango de fechas |
+
+Diseño y catálogo planeado en [`docs/tool-design.md`](docs/tool-design.md).
 
 ## Requisitos
 
@@ -49,8 +61,39 @@ Ninguna todavía. El catálogo **propuesto** para Restobar está en
 
 ## Instalación y configuración
 
-El servidor todavía no es ejecutable. La configuración planeada se documenta en
-[`.env.example`](.env.example):
+Mientras no se publique en npm, se instala desde el código fuente:
+
+```bash
+git clone https://github.com/salazar692/MCP_Loggro.git
+cd MCP_Loggro
+npm ci && npm run build
+```
+
+**Claude Desktop:** agrega el servidor en el archivo de configuración de Claude Desktop
+(`claude_desktop_config.json`), con la ruta absoluta a `dist/index.js`:
+
+```json
+{
+  "mcpServers": {
+    "loggro-restobar": {
+      "command": "node",
+      "args": ["/ruta/a/MCP_Loggro/dist/index.js"],
+      "env": { "LOGGRO_RESTOBAR_TOKEN": "tu-token-de-restobar" }
+    }
+  }
+}
+```
+
+**Claude Code:**
+
+```bash
+claude mcp add loggro-restobar -e LOGGRO_RESTOBAR_TOKEN=tu-token -- node /ruta/a/MCP_Loggro/dist/index.js
+```
+
+Si tienes varias sucursales, cada una con su propio token, agrega un servidor por sucursal
+(p. ej. `loggro-centro` y `loggro-norte`).
+
+Variables de entorno (ver [`.env.example`](.env.example)):
 
 | Variable | Descripción |
 | --- | --- |
@@ -58,8 +101,10 @@ El servidor todavía no es ejecutable. La configuración planeada se documenta e
 | `LOGGRO_RESTOBAR_EMAIL` / `LOGGRO_RESTOBAR_PASSWORD` | Opción 2: usuario de Restobar; el servidor obtiene el token con `POST /login`. |
 | `LOGGRO_RESTOBAR_BASE_URL` | URL base oficial, `https://api.pirpos.com`. |
 | `LOGGRO_REDACT_PERSONAL_DATA` | `true` para ocultar documento, correo, teléfono y dirección de clientes y proveedores. |
-| `LOGGRO_EXPORT_DIR` | Carpeta donde se guardan las exportaciones a Excel. |
+| `LOGGRO_TIMEZONE` | Zona horaria para interpretar las fechas. Por defecto `America/Bogota`. |
 | `LOG_LEVEL` | `debug`, `info`, `warn` o `error` (los logs van siempre a stderr). |
+
+El token es la opción recomendada: la contraseña no queda guardada en la configuración del cliente.
 
 Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`](docs/security.md).
 
@@ -72,7 +117,8 @@ Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`]
 - **Datos:** todo lo que devuelvan las herramientas llega al proveedor del modelo de IA que uses,
   **incluidos los datos personales de tus clientes y proveedores** (documento, correo, teléfono). Tú
   decides si eso es aceptable para tu negocio; puedes ocultarlos con `LOGGRO_REDACT_PERSONAL_DATA=true`.
-  Las exportaciones a Excel se escriben en tu equipo y no pasan por el modelo.
+  Para listados grandes (p. ej. exportar clientes a Excel) está en estudio una exportación que guarde
+  el archivo en tu equipo sin pasar los datos por el modelo.
 - **Prompt injection:** el contenido de Loggro (nombres, notas, descripciones) se trata como dato, nunca
   como instrucción.
 
@@ -93,6 +139,11 @@ npm run check          # formato, lint, tipos, pruebas y build (lo mismo que la 
 npm test               # solo pruebas
 npm run docs:sync      # regenera docs/loggro-api/inventory desde la documentación oficial
 ```
+
+**Prueba contra la API real** (opcional, con tu token): `node --env-file=.env scripts/smoke-restobar.ts`.
+Solo usa el modo token (nunca hace login) y bloquea antes de la red cualquier método que no sea GET.
+Hace como máximo 5 solicitudes por herramienta, acumuladas entre ejecuciones, e imprime solo tipos y
+conteos, nunca datos.
 
 | Documento | Contenido |
 | --- | --- |
