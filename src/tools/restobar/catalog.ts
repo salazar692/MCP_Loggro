@@ -10,7 +10,6 @@ import {
   runTool,
   toRestobarPage,
 } from '../shared.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 const nullableText = z.string().nullable();
@@ -60,15 +59,13 @@ export function registerCatalogTools(server: McpServer, ctx: RestobarToolContext
         search: z.string().min(1).optional().describe('Nombre o código de barras.'),
         categoryId: z.string().min(1).optional().describe('ID de la categoría.'),
         ...paginationInput,
-        ...branchInput(ctx),
       },
       outputSchema: { products: z.array(ProductOut), pagination: paginationOutput },
       annotations: READ_ONLY_ANNOTATIONS,
     },
     (args) =>
       runTool(ctx.logger, 'restobar_list_products', async () => {
-        const restobar = await restobarFor(ctx, args);
-        const page = await restobar.listProducts({
+        const page = await ctx.restobar.listProducts({
           ...toRestobarPage(args.page, args.pageSize),
           name: args.search,
           categoryId: args.categoryId,
@@ -115,7 +112,7 @@ export function registerCatalogTools(server: McpServer, ctx: RestobarToolContext
       title: 'Listar categorías (Restobar)',
       description:
         'Lista las categorías activas de productos del negocio en Restobar (id y nombre). Solo lectura.',
-      inputSchema: { ...branchInput(ctx) },
+      inputSchema: {},
       outputSchema: {
         categories: z.array(
           z.object({
@@ -128,9 +125,9 @@ export function registerCatalogTools(server: McpServer, ctx: RestobarToolContext
       },
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    (args) =>
+    () =>
       runTool(ctx.logger, 'restobar_list_categories', async () => {
-        const categories = await (await restobarFor(ctx, args)).listCategories();
+        const categories = await ctx.restobar.listCategories();
         return {
           categories: categories.map((c) => ({
             id: c._id,
@@ -148,13 +145,13 @@ export function registerCatalogTools(server: McpServer, ctx: RestobarToolContext
       title: 'Listar métodos de pago (Restobar)',
       description:
         'Lista los métodos de pago configurados en Restobar (p. ej. Efectivo o Tarjeta). Sirve para filtrar facturas por método de pago. Solo lectura.',
-      inputSchema: { ...branchInput(ctx) },
+      inputSchema: {},
       outputSchema: { paymentMethods: z.array(z.object({ id: z.string(), name: nullableText })) },
       annotations: READ_ONLY_ANNOTATIONS,
     },
-    (args) =>
+    () =>
       runTool(ctx.logger, 'restobar_list_payment_methods', async () => {
-        const methods = await (await restobarFor(ctx, args)).listPaymentMethods();
+        const methods = await ctx.restobar.listPaymentMethods();
         return { paymentMethods: methods.map((m) => ({ id: m._id, name: m.name ?? null })) };
       }),
   );

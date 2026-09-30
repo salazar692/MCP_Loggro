@@ -31,7 +31,6 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { loadConfig } from '../src/config.ts';
 import { HttpClient } from '../src/http/client.ts';
 import { StaticTokenProvider } from '../src/loggro/restobar/auth.ts';
-import { singleSource } from '../src/loggro/restobar/branches.ts';
 import { RestobarClient } from '../src/loggro/restobar/client.ts';
 import { RESTOBAR_ALLOWLIST } from '../src/loggro/restobar/operations.ts';
 import { silentLogger } from '../src/logging.ts';
@@ -341,7 +340,7 @@ async function main(): Promise<void> {
   });
   const server = createServer({
     // Token vacío: el cliente HTTP no envía la cabecera Authorization.
-    restobar: singleSource(new RestobarClient(http, new StaticTokenProvider(token))),
+    restobar: new RestobarClient(http, new StaticTokenProvider(token)),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
     exportDir,

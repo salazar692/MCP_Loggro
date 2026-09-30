@@ -1,15 +1,19 @@
 # Integración remota: MCP_Loggro dentro de tu propio servidor
 
 MCP_Loggro se usa normalmente en local (stdio): cada persona lo instala en su equipo con su credencial.
-Este documento es para quien ya **guarda las credenciales de Restobar de sus usuarios en un servidor**
-(una plataforma con varios negocios o varias sucursales) y quiere que esos usuarios conecten Claude
-**sin configurar nada ni generar tokens nuevos**: el servidor usa la credencial que ya tiene.
+Este documento es para quien ya **guarda la credencial de Restobar de sus usuarios en un servidor** y
+quiere que esos usuarios conecten Claude **sin configurar nada ni generar tokens nuevos**: el servidor
+usa la credencial que ya tiene.
+
+**Principio: una credencial, una cuenta.** Cada conexión de Claude usa una sola credencial de
+Restobar (un usuario y su contraseña, o su token). Lo que esa credencial puede ver en Restobar es lo que
+se puede consultar. Otra credencial es otra cuenta y otra conexión.
 
 ```text
 Claude ──(MCP por HTTP + OAuth)──▶ tu endpoint MCP ──▶ MCP_Loggro (librería) ──▶ api.pirpos.com
                                         │                      ▲
-                                        └── identifica al usuario y le entrega
-                                            el token de cada sucursal (TokenProvider)
+                                        └── identifica al usuario y entrega el
+                                            token de su cuenta (TokenProvider)
 ```
 
 MCP_Loggro pone las herramientas, los esquemas y el mapeo de datos; tu servidor pone la autenticación
@@ -22,12 +26,10 @@ Punto de entrada: [`src/remote.ts`](../src/remote.ts).
 | Export | Uso |
 | --- | --- |
 | `createServer(ctx)` | Crea el `McpServer` con todas las herramientas. |
-| `RestobarClient`, `HttpClient`, `RESTOBAR_ALLOWLIST` | Cliente de solo lectura de una cuenta (sucursal) de Restobar. |
+| `RestobarClient`, `HttpClient`, `RESTOBAR_ALLOWLIST` | Cliente de solo lectura de la cuenta de Restobar. |
 | `TokenProvider` | Contrato que implementas para entregar el token (ver §3). |
-| `singleSource(client)` | Una sola cuenta. |
-| `BranchSource(branches, connect)` | Varias sucursales, cada una con su credencial (ver §4). |
 | `LoggroError` | Errores con mensaje seguro para el modelo (ver §3). |
-| `resolveBranch`, `silentLogger`, `createLogger`, `VERSION` | Utilidades. |
+| `silentLogger`, `createLogger`, `VERSION` | Utilidades. |
 
 **Node.js:** `npm install github:salazar692/MCP_Loggro_Restobar#<commit>` e
 `import { createServer, … } from 'mcp-loggro/remote'`.
@@ -46,11 +48,11 @@ Punto de entrada: [`src/remote.ts`](../src/remote.ts).
 ```
 
 ```ts
-import { createServer, BranchSource, … } from "mcp-loggro/remote.ts";
+import { createServer, RestobarClient, … } from "mcp-loggro/remote.ts";
 ```
 
-Verificado con Deno 2: `initialize`, `tools/list` y `tools/call` por HTTP con dos sucursales. Actualiza
-`<COMMIT>` a propósito cuando quieras una versión nueva; nunca apuntes a una rama.
+Verificado con Deno 2: `initialize`, `tools/list` y `tools/call` por HTTP. Actualiza `<COMMIT>` a
+propósito cuando quieras una versión nueva; nunca apuntes a una rama.
 
 ## 2. Endpoint MCP (Streamable HTTP, sin sesión)
 
@@ -59,11 +61,14 @@ transporte web estándar del SDK:
 
 ```ts
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createServer, silentLogger } from "mcp-loggro/remote.ts";
+import { createServer, HttpClient, RESTOBAR_ALLOWLIST, RestobarClient, silentLogger } from "mcp-loggro/remote.ts";
 
-async function mcp(req: Request, source: RestobarSource): Promise<Response> {
+async function mcp(req: Request, tokens: TokenProvider): Promise<Response> {
   const server = createServer({
-    restobar: source,
+    restobar: new RestobarClient(
+      new HttpClient({ baseUrl: "https://api.pirpos.com", allowlist: RESTOBAR_ALLOWLIST }),
+      tokens,
+    ),
     redactPersonalData: false,
     timeZone: "America/Bogota",
     exportDir: null, // remoto: sin exportación a archivo (quedaría en tu servidor, no en el equipo del usuario)
@@ -94,40 +99,19 @@ interface TokenProvider {
 }
 ```
 
-- `getToken()` debe leer la credencial que tu servidor **ya guarda** para esa cuenta (caché en memoria,
-  base de datos o login con la contraseña cifrada, en ese orden). No generes tokens nuevos si ya hay uno.
+- `getToken()` debe leer la credencial que tu servidor **ya guarda** para la cuenta del usuario
+  autenticado (caché en memoria, base de datos o login con la contraseña cifrada, en ese orden). No
+  generes tokens nuevos si ya hay uno vigente.
 - Si Restobar responde 401, el cliente llama `invalidate(token)`. Devuelve `true` si puedes renovarlo:
   el siguiente `getToken()` debe forzar la renovación. El cliente reintenta **una sola vez**.
 - El token nunca sale de tu servidor: no lo devuelvas en respuestas, no lo registres en logs.
 - Si tu búsqueda falla (sin credencial guardada, contraseña ilegible…), lanza
   `new LoggroError('auth' | 'config' | 'unavailable', mensajeSeguro)`: el modelo recibe ese mensaje.
   Cualquier otro error llega como «Ocurrió un error inesperado».
+- La cuenta sale del usuario autenticado (su token OAuth), **nunca** de los argumentos de una
+  herramienta: las herramientas no tienen ningún parámetro para elegir cuenta.
 
-## 4. Sucursales
-
-Cada sucursal de Restobar es un negocio con su propia credencial. Con `BranchSource`:
-
-```ts
-const source = new BranchSource(
-  [{ id: "<id interno>", name: "Viva" }, { id: "<id interno>", name: "Meridiem" }],
-  (branch) => new RestobarClient(
-    new HttpClient({ baseUrl: urlDeLaSucursal, allowlist: RESTOBAR_ALLOWLIST }),
-    tokenProviderDe(branch.id),
-  ),
-);
-```
-
-- Con más de una sucursal, **todas las herramientas aceptan `branch`** y aparece
-  `restobar_list_branches`. `branch` admite el id o el nombre, sin tildes ni mayúsculas, e incluso una
-  frase («la sucursal del Viva»). Si falta o es ambiguo, la herramienta responde con la lista de
-  sucursales para que el modelo pregunte.
-- Con una sola sucursal usa `singleSource(client)`: no aparece `branch`.
-- **Autorización:** la lista que le pasas a `BranchSource` ES el control de acceso. Incluye solo las
-  sucursales que el usuario autenticado puede ver **y** que tienen credencial de Restobar activa. El
-  parámetro `branch` solo elige dentro de esa lista; nunca permite salir de ella.
-- `connect` se llama una vez por sucursal y por servidor (petición); los fallos no quedan en caché.
-
-## 5. Autenticación de Claude (OAuth 2.1)
+## 4. Autenticación de Claude (OAuth 2.1)
 
 Claude se conecta a servidores MCP remotos como **conector personalizado** y se autentica con OAuth
 según la especificación de autorización de MCP:
@@ -148,20 +132,19 @@ según la especificación de autorización de MCP:
    clientes** y PKCE, y muestra al usuario una pantalla de consentimiento. Sirve cualquier proveedor
    OAuth 2.1 que cumpla la especificación de autorización de MCP, propio o de terceros.
 4. Claude recibe un access token (JWT) y lo envía en cada petición. Tu endpoint lo valida, identifica al
-   usuario y arma el `RestobarSource` con sus sucursales.
+   usuario y arma el `TokenProvider` con la credencial de su cuenta.
 
 En Claude: **Configuración → Conectores → Agregar conector personalizado**, con la URL del endpoint.
 La URL de retorno de Claude que debe aceptar el servidor de autorización es
 `https://claude.ai/api/mcp/auth_callback`.
 
-## 6. Lista de verificación
+## 5. Lista de verificación
 
 - [ ] El endpoint valida el JWT en **cada** petición y deduce el usuario del token, nunca del cuerpo.
-- [ ] `BranchSource` solo recibe sucursales visibles para ese usuario y con credencial activa.
+- [ ] Cada usuario consulta solo con la credencial de su propia cuenta.
 - [ ] El token de Restobar no aparece en respuestas, logs ni errores.
 - [ ] `exportDir: null`.
 - [ ] La versión de MCP_Loggro está fijada a un commit.
-- [ ] Probado: `initialize`, `tools/list` (con `restobar_list_branches` si hay varias sucursales) y una
-      consulta por sucursal que use su propio token.
+- [ ] Probado: `initialize`, `tools/list` y una consulta real con la credencial del usuario.
 - [ ] El usuario sabe que lo que devuelven las herramientas llega al proveedor del modelo, incluidos
       datos personales de clientes (ver [`security.md`](./security.md)).

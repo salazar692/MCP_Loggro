@@ -12,7 +12,6 @@ import {
   toRestobarPage,
 } from '../shared.ts';
 import { clientCity } from '../../loggro/restobar/schemas.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 const nullableText = z.string().nullable();
@@ -52,7 +51,6 @@ export function registerClientTools(server: McpServer, ctx: RestobarToolContext)
         UNTRUSTED_NOTE,
       ].join(' '),
       inputSchema: {
-        ...branchInput(ctx),
         search: z
           .string()
           .min(1)
@@ -65,9 +63,7 @@ export function registerClientTools(server: McpServer, ctx: RestobarToolContext)
     },
     (args) =>
       runTool(ctx.logger, 'restobar_list_clients', async () => {
-        const page = await (
-          await restobarFor(ctx, args)
-        ).listClients({
+        const page = await ctx.restobar.listClients({
           ...toRestobarPage(args.page, args.pageSize),
           filter: args.search,
         });

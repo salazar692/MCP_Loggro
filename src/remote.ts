@@ -10,13 +10,6 @@ export { createServer } from './server.ts';
 export { LoggroError, userMessage, type LoggroErrorKind } from './errors.ts';
 export { HttpClient } from './http/client.ts';
 export type { TokenProvider } from './loggro/restobar/auth.ts';
-export {
-  BranchSource,
-  resolveBranch,
-  singleSource,
-  type Branch,
-  type RestobarSource,
-} from './loggro/restobar/branches.ts';
 export { RestobarClient } from './loggro/restobar/client.ts';
 export { RESTOBAR_ALLOWLIST } from './loggro/restobar/operations.ts';
 export { createLogger, silentLogger, type Logger } from './logging.ts';

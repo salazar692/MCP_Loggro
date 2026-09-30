@@ -1,9 +1,9 @@
-import type { RestobarSource } from '../../loggro/restobar/branches.ts';
+import type { RestobarClient } from '../../loggro/restobar/client.ts';
 import type { Logger } from '../../logging.ts';
 
 export interface RestobarToolContext {
-  /** Cliente de Restobar por sucursal (una sola cuenta: `singleSource`). */
-  restobar: RestobarSource;
+  /** Cliente de la cuenta de Restobar: una credencial, una cuenta. */
+  restobar: RestobarClient;
   redactPersonalData: boolean;
   timeZone: string;
   /**

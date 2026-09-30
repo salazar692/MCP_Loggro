@@ -147,7 +147,6 @@ src/
     restobar/
       operations.ts        # allowlist: id, método, ruta y página oficial
       auth.ts              # TokenProvider: token fijo o login con caché en memoria
-      branches.ts          # sucursales: singleSource, BranchSource, resolveBranch (ADR-016)
       client.ts            # un método por operación permitida
       schemas.ts           # esquemas Zod de las respuestas (solo campos usados)
   export/
@@ -155,14 +154,14 @@ src/
     save.ts                # archivo nuevo en la carpeta local configurada, sin sobrescribir
   tools/
     shared.ts              # paginación, fechas y formato de salida comunes
-    restobar/              # herramientas por recurso; branch.ts añade `branch` y list_branches
+    restobar/              # herramientas por recurso
 scripts/
   sync-loggro-docs.ts      # regenera docs/loggro-api/inventory
   smoke-restobar.ts        # prueba manual contra Restobar real, con tope de solicitudes
 tests/
   unit/                    # sin red: fetch y clientes falsos
   contract/                # allowlist frente al inventario oficial
-  e2e/                     # servidor MCP completo con fetch falso (incluye sucursales)
+  e2e/                     # servidor MCP completo con fetch falso
 ```
 
 ## 10. Estrategia de pruebas

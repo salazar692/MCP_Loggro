@@ -48,7 +48,7 @@ integración solo manuales (A18).
 | C3 | Pruebas reales desde el chat de Claude Code. | El token se configura como variable de entorno del entorno en la nube (nunca pegado en el chat); la variable la toma una sesión nueva. Reglas del propietario: entre 1 y 5 solicitudes por herramienta, solo lectura, nada que modifique. `scripts/smoke-restobar.ts` las hace cumplir. |
 | C4 | Preguntó dónde quedarían los archivos exportados. | Explicado: con Claude Desktop, el servidor corre en su equipo y guardaría el archivo en una carpeta local; la alternativa es que Claude arme el Excel en el chat. La decisión (ADR-015) depende del número de clientes, que dará la prueba real. |
 | C5 | Propone recibir reportes por GitHub. | GitHub no ofrece mensajes privados y los reportes de conducta no deben ser públicos. Se pospone el Código de Conducta hasta que haya comunidad o un correo del proyecto. |
-| C6 | Tiene **varias sucursales, cada una con su propio token**. | Hoy: un servidor por sucursal en el cliente MCP. Propuesta: soporte multi-sucursal en un solo servidor (ADR-016). |
+| C6 | Tiene **varias sucursales, cada una con su propio usuario y clave**. | Una credencial = una cuenta: cada credencial es una instalación o conexión propia (ADR-016). |
 
 ## E. Confirmado contra la API real (2026-09-29)
 

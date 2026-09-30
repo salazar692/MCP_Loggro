@@ -13,7 +13,6 @@ import {
   runTool,
   toRestobarPage,
 } from '../shared.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 const nullableText = z.string().nullable();
@@ -45,7 +44,6 @@ export function registerOrderTools(server: McpServer, ctx: RestobarToolContext):
         UNTRUSTED_NOTE,
       ].join(' '),
       inputSchema: {
-        ...branchInput(ctx),
         dateFrom: dateInput.optional().describe('Desde esta fecha, inclusive (YYYY-MM-DD).'),
         dateTo: dateInput.optional().describe('Hasta esta fecha, inclusive (YYYY-MM-DD).'),
         status: z.enum(['Espera', 'Cocina', 'Listo', 'Entregado', 'Cancelado']).optional(),
@@ -59,9 +57,7 @@ export function registerOrderTools(server: McpServer, ctx: RestobarToolContext):
     (args) =>
       runTool(ctx.logger, 'restobar_list_orders', async () => {
         const range = dayRangeToIso(args.dateFrom, args.dateTo, ctx.timeZone);
-        const page = await (
-          await restobarFor(ctx, args)
-        ).listOrders({
+        const page = await ctx.restobar.listOrders({
           ...toRestobarPage(args.page, args.pageSize),
           dateInit: range.start,
           dateEnd: range.end,

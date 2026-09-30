@@ -13,7 +13,6 @@ import {
   formatLocal,
   runTool,
 } from '../shared.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 /*
@@ -245,13 +244,13 @@ export function registerClientBulkTools(server: McpServer, ctx: RestobarToolCont
         'clientes puede tardar. Solo lectura.',
         UNTRUSTED_NOTE,
       ].join(' '),
-      inputSchema: { search: searchInput, ...branchInput(ctx) },
+      inputSchema: { search: searchInput },
       outputSchema: SummaryOut,
       annotations: READ_ONLY_ANNOTATIONS,
     },
     (args) =>
       runTool(ctx.logger, 'restobar_clients_summary', async () => {
-        const all = await fetchAllClients(await restobarFor(ctx, args), args.search);
+        const all = await fetchAllClients(ctx.restobar, args.search);
         return summarizeClients(all, ctx.timeZone);
       }),
   );
@@ -274,7 +273,7 @@ export function registerClientBulkTools(server: McpServer, ctx: RestobarToolCont
         'En Restobar es solo lectura; en el computador crea un archivo nuevo y nunca sobrescribe otro.',
         'Dile al usuario la ruta exacta del archivo; no describas su contenido, porque no lo conoces.',
       ].join(' '),
-      inputSchema: { search: searchInput, ...branchInput(ctx) },
+      inputSchema: { search: searchInput },
       outputSchema: {
         file: z.string().describe('Ruta absoluta del archivo creado.'),
         rows: z.number().describe('Clientes exportados.'),
@@ -290,7 +289,7 @@ export function registerClientBulkTools(server: McpServer, ctx: RestobarToolCont
     },
     (args) =>
       runTool(ctx.logger, 'restobar_export_clients', async () => {
-        const all = await fetchAllClients(await restobarFor(ctx, args), args.search);
+        const all = await fetchAllClients(ctx.restobar, args.search);
         const now = new Date();
         const workbook = buildXlsx(
           {

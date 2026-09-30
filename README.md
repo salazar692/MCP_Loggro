@@ -54,10 +54,6 @@ del negocio (por defecto `America/Bogota`).
 | `restobar_clients_summary` | Cifras de todos los clientes: total, datos de contacto, nuevos por mes, ciudades |
 | `restobar_export_clients` | Guardar todos los clientes en un Excel (`.xlsx`) en tu computador |
 | `restobar_sales_by_day` | Total facturado y número de facturas por día en un rango de fechas |
-| `restobar_list_branches` | Solo en servidores remotos con varias sucursales: lista las sucursales disponibles |
-
-Con varias sucursales (modo remoto), todas las herramientas aceptan además `branch` («Viva»,
-«sucursal del Meridiem»…) y cada consulta usa la credencial de esa sucursal.
 
 **Listados grandes.** Un chat no puede mostrar miles de registros: sería lento, costoso y se cortaría.
 Cuando un listado supera 200 resultados, el servidor se lo advierte al asistente y le indica qué
@@ -124,8 +120,9 @@ Usa una sola de las dos opciones. Si otras integraciones usan el mismo usuario d
 cuenta que no está confirmado si un login nuevo invalida los tokens anteriores (pregunta B2 de
 [`docs/open-questions.md`](docs/open-questions.md)); en ese caso el modo token es el más prudente.
 
-**Varias sucursales:** cada sucursal de Restobar tiene su propia credencial. En instalación local,
-agrega un servidor por sucursal con nombres distintos (p. ej. `loggro-viva` y `loggro-meridiem`).
+**Una credencial, una cuenta.** Puedes consultar todo lo que tu usuario de Restobar puede ver. Si
+tienes otra cuenta de Restobar con otro usuario y contraseña, agrega otra instalación con otro nombre
+(p. ej. `loggro-cuenta-2`) y sus propias credenciales.
 
 ### Otras formas de instalar
 
@@ -139,7 +136,7 @@ agrega un servidor por sucursal con nombres distintos (p. ej. `loggro-viva` y `l
   ```
 
   y en el cliente usa `"command": "node"` con `"args": ["/ruta/absoluta/MCP_Loggro_Restobar/dist/index.js"]`.
-- **Como servidor remoto** (varias personas o sucursales, credenciales guardadas en tu servidor): ver
+- **Como servidor remoto** (credenciales de tus usuarios guardadas en tu servidor): ver
   [`docs/remote-integration.md`](docs/remote-integration.md).
 
 ### Variables de entorno
@@ -215,7 +212,7 @@ conteos, nunca datos. Opciones (`SMOKE_RAW_SHAPE`, `SMOKE_INVOICE_ID`, `SMOKE_LE
 | [`docs/loggro-api/README.md`](docs/loggro-api/README.md) | Investigación de la API oficial: productos, autenticación, paginación, errores y límites |
 | [`docs/loggro-api/inventory/`](docs/loggro-api/inventory/README.md) | Inventario de los 629 endpoints documentados, con clasificación de lectura o escritura |
 | [`docs/restobar-data-map.md`](docs/restobar-data-map.md) | Cómo llega cada dato de la API real de Restobar y cómo queda mapeado en las herramientas y el Excel |
-| [`docs/remote-integration.md`](docs/remote-integration.md) | Cómo montar un servidor MCP remoto con esta librería: OAuth, credenciales por sucursal |
+| [`docs/remote-integration.md`](docs/remote-integration.md) | Cómo montar un servidor MCP remoto con esta librería: OAuth y credencial de cada usuario |
 | [`docs/architecture.md`](docs/architecture.md) | Arquitectura, flujo de datos, manejo de errores y estrategia de pruebas |
 | [`docs/security.md`](docs/security.md) | Modelo de amenazas, credenciales y privacidad |
 | [`docs/tool-design.md`](docs/tool-design.md) | Principios y catálogo propuesto de herramientas |

@@ -149,12 +149,10 @@ Herramienta: `restobar_sales_by_day`.
 | `restobar_list_orders` | `complementary` siempre `null` | Es un objeto `{ isComplementary }`. |
 | Facturas | Sin método de pago, vendedor, subtotales ni desglose | Campos existentes que no se mapeaban. |
 
-## 9. Sucursales y modo remoto
+## 9. Modo remoto
 
-En un servidor remoto con varias sucursales (ver [`remote-integration.md`](./remote-integration.md)),
-todas las herramientas aceptan `branch` y existe `restobar_list_branches` (`{ branches: [{ id, name }] }`).
-El mapeo de datos es idéntico: cada sucursal es un negocio de Restobar con su propia credencial. En
-modo remoto no existe `restobar_export_clients`.
+En un servidor remoto (ver [`remote-integration.md`](./remote-integration.md)) el mapeo de datos es
+idéntico; la única diferencia es que no existe `restobar_export_clients`.
 
 ## 10. Cómo verificar o ampliar este mapa
 

@@ -9,7 +9,7 @@ Servidor MCP de **solo lectura** para Loggro Restobar (`https://api.pirpos.com`)
 - **Esquemas:** `src/loggro/restobar/schemas.ts`. **Herramientas:** `src/tools/restobar/`.
 - **Dos modos, una sola implementación:** ejecutable local por stdio (`src/index.ts`) y librería para
   servidores remotos (`src/remote.ts`, guía en [`docs/remote-integration.md`](docs/remote-integration.md)).
-  Las sucursales (`branch`, `restobar_list_branches`) solo existen en modo remoto con `BranchSource`.
+  Una credencial = una cuenta: las herramientas no tienen parámetros para elegir cuenta o negocio.
 - **Independencia:** este repositorio no depende de ninguna plataforma concreta que lo integre ni la
   menciona; lo específico de cada integración vive en su propio repositorio.
 - **Verificar:** `npm run check` (formato, lint, tipos, pruebas y build).

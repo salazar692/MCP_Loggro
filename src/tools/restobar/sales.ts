@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { READ_ONLY_ANNOTATIONS, dateInput, dayRangeToIso, runTool } from '../shared.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 export function registerSalesTools(server: McpServer, ctx: RestobarToolContext): void {
@@ -16,7 +15,6 @@ export function registerSalesTools(server: McpServer, ctx: RestobarToolContext):
         'ventas (ST_GET_SALES). Solo lectura.',
       ].join(' '),
       inputSchema: {
-        ...branchInput(ctx),
         dateFrom: dateInput.describe('Desde esta fecha, inclusive (YYYY-MM-DD).'),
         dateTo: dateInput.describe('Hasta esta fecha, inclusive (YYYY-MM-DD).'),
       },
@@ -35,9 +33,7 @@ export function registerSalesTools(server: McpServer, ctx: RestobarToolContext):
     (args) =>
       runTool(ctx.logger, 'restobar_sales_by_day', async () => {
         const range = dayRangeToIso(args.dateFrom, args.dateTo, ctx.timeZone);
-        const days = await (
-          await restobarFor(ctx, args)
-        ).salesByDay({
+        const days = await ctx.restobar.salesByDay({
           dateInitISO: range.start ?? '',
           dateEndISO: range.end ?? '',
         });

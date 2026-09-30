@@ -14,7 +14,6 @@ import {
   runTool,
   toRestobarPage,
 } from '../shared.ts';
-import { branchInput, restobarFor } from './branch.ts';
 import type { RestobarToolContext } from './context.ts';
 
 const nullableText = z.string().nullable();
@@ -136,7 +135,6 @@ export function registerInvoiceTools(server: McpServer, ctx: RestobarToolContext
         UNTRUSTED_NOTE,
       ].join(' '),
       inputSchema: {
-        ...branchInput(ctx),
         dateFrom: dateInput.optional().describe('Desde esta fecha, inclusive (YYYY-MM-DD).'),
         dateTo: dateInput.optional().describe('Hasta esta fecha, inclusive (YYYY-MM-DD).'),
         status: z.enum(['Pendiente', 'Pagada', 'Anulada', 'Todos']).optional(),
@@ -152,9 +150,7 @@ export function registerInvoiceTools(server: McpServer, ctx: RestobarToolContext
     (args) =>
       runTool(ctx.logger, 'restobar_list_invoices', async () => {
         const range = dayRangeToIso(args.dateFrom, args.dateTo, ctx.timeZone);
-        const page = await (
-          await restobarFor(ctx, args)
-        ).listInvoices({
+        const page = await ctx.restobar.listInvoices({
           ...toRestobarPage(args.page, args.pageSize),
           dateInit: range.start,
           dateEnd: range.end,
@@ -187,7 +183,6 @@ export function registerInvoiceTools(server: McpServer, ctx: RestobarToolContext
         UNTRUSTED_NOTE,
       ].join(' '),
       inputSchema: {
-        ...branchInput(ctx),
         id: z
           .string()
           .regex(/^[A-Za-z0-9_-]{1,64}$/, 'ID con formato inválido.')
@@ -198,7 +193,7 @@ export function registerInvoiceTools(server: McpServer, ctx: RestobarToolContext
     },
     (args) =>
       runTool(ctx.logger, 'restobar_get_invoice', async () => {
-        const invoice = await (await restobarFor(ctx, args)).getInvoice(args.id);
+        const invoice = await ctx.restobar.getInvoice(args.id);
         return { invoice: toDetail(invoice, ctx.redactPersonalData) };
       }),
   );

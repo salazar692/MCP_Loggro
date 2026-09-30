@@ -190,22 +190,18 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
   - Los listados avisan (`pagination.notice`) cuando el total supera 200 y las instrucciones del servidor
     piden no recorrer decenas de páginas.
 
-## ADR-016 · Varias sucursales, cada una con su token
+## ADR-016 · Una credencial, una cuenta
 
-- **Estado:** Aceptada e implementada (2026-09-30) en la librería; ver ADR-018.
-- **Decisión:** las sucursales se resuelven con `RestobarSource` (`src/loggro/restobar/branches.ts`).
-  Con varias, todas las herramientas aceptan `branch` (id o nombre, tolerante a tildes, mayúsculas y
-  frases) y existe `restobar_list_branches`; cada sucursal consulta con su propia credencial. La lista
-  de sucursales la entrega quien arma el servidor y es el control de acceso.
-- **En local (stdio)** no se configuran sucursales: se agrega un servidor por sucursal. Las sucursales
-  tienen sentido en un servidor remoto que ya conoce los negocios de cada usuario y sus credenciales.
-- **Historial:**
-- **Contexto:** en Restobar cada sucursal tiene su propio token (respuesta del propietario, 2026-09-29).
-- **Hoy:** se configura un servidor por sucursal en el cliente MCP (`loggro-centro`, `loggro-norte`, …).
-  No requiere código, pero una pregunta como «ventas de todas las sucursales» obliga al modelo a llamar
-  a cada servidor por separado.
-- **Propuesta original:** un solo servidor local con varias sucursales (`LOGGRO_RESTOBAR_BRANCHES`).
-  Descartada: en local no aporta y obliga a guardar varias credenciales en la configuración del cliente.
+- **Estado:** Aceptada (2026-09-30, decisión del propietario). Reemplaza la propuesta de soportar varias
+  sucursales en un solo servidor.
+- **Decisión:** el MCP recibe **una** credencial de Restobar (usuario y contraseña, o token) y consulta
+  todo lo que esa credencial puede ver. No modela sucursales ni tiene parámetros para elegir cuenta.
+  Si alguien tiene otra cuenta con otro usuario y contraseña, crea otra instalación (local) u otra
+  conexión (remoto) con esa credencial.
+- **Por qué:** es el modelo de Restobar (cada credencial define su alcance) y evita confusión: el
+  usuario no configura nada más que su credencial.
+- **Historial:** se probaron un parámetro `branch` y una fuente de varias cuentas por servidor; se
+  retiraron por agregar complejidad sin necesidad.
 
 ## ADR-017 · Dependencias de ejecución
 
@@ -218,10 +214,11 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 - **Estado:** Aceptada e implementada (2026-09-30)
 - **Contexto:** plataformas que ya guardan las credenciales de Restobar de sus usuarios quieren ofrecer
   las mismas herramientas a Claude sin que cada usuario instale nada ni genere tokens nuevos.
-- **Decisión:** `src/remote.ts` expone `createServer`, `RestobarClient`, `HttpClient`, `TokenProvider`,
-  `singleSource` y `BranchSource`. La plataforma pone el transporte HTTP, la autenticación del usuario
-  (OAuth) y la fuente del token. Con `exportDir: null` no se ofrece la exportación a archivo. El código
-  no depende de Node: funciona en Deno (verificado) importándolo fijado a un commit.
+- **Decisión:** `src/remote.ts` expone `createServer`, `RestobarClient`, `HttpClient`, `TokenProvider`
+  y `LoggroError`. La plataforma pone el transporte HTTP, la autenticación del usuario (OAuth) y la
+  fuente del token de la cuenta de cada usuario (ADR-016: una credencial, una cuenta). Con
+  `exportDir: null` no se ofrece la exportación a archivo. El código no depende de Node: funciona en
+  Deno (verificado) importándolo fijado a un commit.
 - **Consecuencias:** una sola implementación de herramientas y mapeo para local y remoto. El transporte
   stdio sigue siendo el ejecutable del paquete. Guía: [`remote-integration.md`](./remote-integration.md).
 

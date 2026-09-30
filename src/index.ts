@@ -13,7 +13,6 @@ import {
   StaticTokenProvider,
   type TokenProvider,
 } from './loggro/restobar/auth.ts';
-import { singleSource } from './loggro/restobar/branches.ts';
 import { RestobarClient } from './loggro/restobar/client.ts';
 import { RESTOBAR_ALLOWLIST } from './loggro/restobar/operations.ts';
 import { createLogger } from './logging.ts';
@@ -35,7 +34,7 @@ async function main(): Promise<void> {
       : new LoginTokenProvider(http, auth.email, auth.password);
 
   const server = createServer({
-    restobar: singleSource(new RestobarClient(http, tokens)),
+    restobar: new RestobarClient(http, tokens),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
     exportDir: config.exportDir,
