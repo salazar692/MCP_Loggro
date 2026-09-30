@@ -1,7 +1,7 @@
 /**
- * Punto de entrada para usar MCP_Loggro como librería dentro de un servidor remoto (por ejemplo, una
- * Edge Function de Supabase en Deno). Quien lo importa aporta el transporte HTTP y la fuente del
- * token (`TokenProvider`); el token nunca sale del servidor.
+ * Punto de entrada para usar MCP_Loggro como librería dentro de un servidor remoto propio (Node.js o
+ * Deno, en cualquier hosting). Quien lo importa aporta el transporte HTTP y la fuente del token
+ * (`TokenProvider`); el token nunca sale del servidor.
  *
  * Con `exportDir: null` no se registra `restobar_export_clients`: en un servidor remoto el archivo
  * quedaría en el servidor y no en el computador del usuario.

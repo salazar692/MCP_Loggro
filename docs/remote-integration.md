@@ -32,8 +32,8 @@ Punto de entrada: [`src/remote.ts`](../src/remote.ts).
 **Node.js:** `npm install github:salazar692/MCP_Loggro_Restobar#<commit>` e
 `import { createServer, … } from 'mcp-loggro/remote'`.
 
-**Deno (p. ej. Supabase Edge Functions):** importa el código fuente fijado a un commit (inmutable) y
-declara las dos dependencias en el `deno.json` de la función:
+**Deno:** importa el código fuente fijado a un commit (inmutable) y declara las dos dependencias en tu
+`deno.json`:
 
 ```json
 {
@@ -80,6 +80,10 @@ async function mcp(req: Request, source: RestobarSource): Promise<Response> {
 
 Con `exportDir: null` no se registra `restobar_export_clients` y las instrucciones del servidor le
 dicen al modelo que use `restobar_clients_summary`.
+
+`WebStandardStreamableHTTPServerTransport` trabaja con `Request`/`Response` estándar, así que sirve en
+cualquier entorno que los tenga (Node.js 22+, Deno, Bun) y con cualquier framework o hosting. Con
+Express, el SDK ofrece `StreamableHTTPServerTransport`.
 
 ## 3. `TokenProvider`: de dónde sale el token
 
@@ -141,9 +145,8 @@ según la especificación de autorización de MCP:
    ```
 
 3. El servidor de autorización publica sus metadatos (RFC 8414), admite **registro dinámico de
-   clientes** y PKCE, y muestra al usuario una pantalla de consentimiento. Supabase Auth, por ejemplo,
-   lo ofrece como «OAuth 2.1 Server» (Authentication → OAuth Server), con los metadatos en
-   `https://<proyecto>.supabase.co/.well-known/oauth-authorization-server/auth/v1`.
+   clientes** y PKCE, y muestra al usuario una pantalla de consentimiento. Sirve cualquier proveedor
+   OAuth 2.1 que cumpla la especificación de autorización de MCP, propio o de terceros.
 4. Claude recibe un access token (JWT) y lo envía en cada petición. Tu endpoint lo valida, identifica al
    usuario y arma el `RestobarSource` con sus sucursales.
 
