@@ -7,6 +7,7 @@
  * quedaría en el servidor y no en el computador del usuario.
  */
 export { createServer } from './server.ts';
+export { LoggroError, userMessage, type LoggroErrorKind } from './errors.ts';
 export { HttpClient } from './http/client.ts';
 export type { TokenProvider } from './loggro/restobar/auth.ts';
 export {

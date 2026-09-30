@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { describe, expect, it } from 'vitest';
 
+import { LoggroError } from '../../src/errors.ts';
 import { HttpClient } from '../../src/http/client.ts';
 import { StaticTokenProvider } from '../../src/loggro/restobar/auth.ts';
 import { BranchSource, resolveBranch } from '../../src/loggro/restobar/branches.ts';
@@ -92,5 +93,27 @@ describe('sucursales', () => {
       'Bearer token-viva',
     ]);
     expect(connected).toEqual(['viva', 'meridiem']); // cada cliente se crea una sola vez
+  });
+  it('un error de la fuente de credenciales llega al modelo con su mensaje', async () => {
+    const source = new BranchSource(BRANCHES, () => {
+      throw new LoggroError('auth', 'Esta sucursal no tiene credenciales de Restobar guardadas.');
+    });
+    const server = createServer({
+      restobar: source,
+      redactPersonalData: false,
+      timeZone: 'America/Bogota',
+      exportDir: null,
+      logger: silentLogger,
+    });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const client = new Client({ name: 'test', version: '0.0.0' });
+    await client.connect(clientTransport);
+    const result = await client.callTool({
+      name: 'restobar_list_categories',
+      arguments: { branch: 'Viva' },
+    });
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toMatch(/no tiene credenciales/);
   });
 });

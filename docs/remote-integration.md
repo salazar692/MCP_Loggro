@@ -26,6 +26,7 @@ Punto de entrada: [`src/remote.ts`](../src/remote.ts).
 | `TokenProvider` | Contrato que implementas para entregar el token (ver §3). |
 | `singleSource(client)` | Una sola cuenta. |
 | `BranchSource(branches, connect)` | Varias sucursales, cada una con su credencial (ver §4). |
+| `LoggroError` | Errores con mensaje seguro para el modelo (ver §3). |
 | `resolveBranch`, `silentLogger`, `createLogger`, `VERSION` | Utilidades. |
 
 **Node.js:** `npm install github:salazar692/MCP_Loggro_Restobar#<commit>` e
@@ -94,6 +95,9 @@ interface TokenProvider {
 - Si Restobar responde 401, el cliente llama `invalidate(token)`. Devuelve `true` si puedes renovarlo:
   el siguiente `getToken()` debe forzar la renovación. El cliente reintenta **una sola vez**.
 - El token nunca sale de tu servidor: no lo devuelvas en respuestas, no lo registres en logs.
+- Si tu búsqueda falla (sin credencial guardada, contraseña ilegible…), lanza
+  `new LoggroError('auth' | 'config' | 'unavailable', mensajeSeguro)`: el modelo recibe ese mensaje.
+  Cualquier otro error llega como «Ocurrió un error inesperado».
 
 ## 4. Sucursales
 
