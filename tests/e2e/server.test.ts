@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { HttpClient } from '../../src/http/client.ts';
 import { StaticTokenProvider } from '../../src/loggro/restobar/auth.ts';
+import { singleSource } from '../../src/loggro/restobar/branches.ts';
 import { RestobarClient } from '../../src/loggro/restobar/client.ts';
 import { RESTOBAR_ALLOWLIST } from '../../src/loggro/restobar/operations.ts';
 import { silentLogger } from '../../src/logging.ts';
@@ -35,7 +36,11 @@ afterAll(async () => {
   await rm(exportDir, { recursive: true, force: true });
 });
 
-async function connect(handler: (req: RecordedRequest) => FakeResponse, redact = false) {
+async function connect(
+  handler: (req: RecordedRequest) => FakeResponse,
+  redact = false,
+  dir: string | null = exportDir,
+) {
   const fake = fakeFetch(handler);
   const http = new HttpClient({
     baseUrl: 'https://api.pirpos.test',
@@ -44,10 +49,10 @@ async function connect(handler: (req: RecordedRequest) => FakeResponse, redact =
     sleep: () => Promise.resolve(),
   });
   const server = createServer({
-    restobar: new RestobarClient(http, new StaticTokenProvider('tok')),
+    restobar: singleSource(new RestobarClient(http, new StaticTokenProvider('tok'))),
     redactPersonalData: redact,
     timeZone: 'America/Bogota',
-    exportDir,
+    exportDir: dir,
     logger: silentLogger,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -70,6 +75,16 @@ describe('servidor MCP', () => {
       });
       expect(tool.outputSchema).toBeDefined();
     }
+  });
+
+  it('modo remoto (sin carpeta local): no ofrece exportar y todo es solo lectura', async () => {
+    const { client } = await connect(() => ({ body: [] }), false, null);
+    const { tools } = await client.listTools();
+    expect(tools.map((t) => t.name).sort()).toEqual(
+      EXPECTED_TOOLS.filter((name) => name !== 'restobar_export_clients'),
+    );
+    expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
+    expect(client.getInstructions()).toMatch(/servidor es remoto/);
   });
 
   it('restobar_list_invoices: mapea fechas, paginación y salida', async () => {

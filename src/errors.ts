@@ -29,7 +29,7 @@ export class LoggroError extends Error {
 
 const GENERIC_MESSAGES: Record<LoggroErrorKind, string> = {
   config: 'La configuración de MCP_Loggro es inválida.',
-  auth: 'No fue posible autenticarse en Restobar. Revisa el token o las credenciales configuradas.',
+  auth: 'Restobar rechazó la credencial: el token pudo vencer o el usuario y la contraseña no son válidos. Si usas LOGGRO_RESTOBAR_TOKEN, reemplázalo por uno vigente y reinicia el cliente MCP (o configura usuario y contraseña para que se renueve solo).',
   forbidden: 'El usuario configurado en Restobar no tiene permiso para esta consulta.',
   premium: 'Esta consulta requiere un plan premium en Restobar.',
   plan_limit: 'El plan del negocio en Restobar no permite consultar ese rango de fechas.',

@@ -9,8 +9,11 @@ MCP_Loggro es un servidor [Model Context Protocol](https://modelcontextprotocol.
 asistentes de IA **consultar** datos de Loggro de forma segura y estructurada.
 
 - **Fase 1 (actual):** solo lectura, un producto (**Restobar**), ejecución local (transporte stdio).
+  Además, las mismas herramientas se pueden montar en un servidor remoto propio como librería
+  (`src/remote.ts`, ADR-018; guía en [`remote-integration.md`](./remote-integration.md)).
 - **Fuera de alcance:** crear, modificar, eliminar o anular registros; operaciones financieras;
-  cualquier acción irreversible; despliegue remoto multiusuario.
+  cualquier acción irreversible; guardar o administrar credenciales de terceros (eso lo hace la
+  plataforma que integra la librería).
 
 ## 2. Vista general
 
@@ -128,13 +131,12 @@ mensaje, y se cubre con pruebas usando los ejemplos oficiales.
   e identificador de solicitud.
 - La redacción de secretos se aplica en un solo lugar (el logger) y tiene pruebas.
 
-## 9. Estructura de carpetas (objetivo)
-
-Se creará de forma incremental, a medida que exista código real:
+## 9. Estructura de carpetas
 
 ```text
 src/
   index.ts                 # entrada del ejecutable: config → servidor → stdio
+  remote.ts                # librería para servidores remotos (ADR-018)
   server.ts                # createServer(deps): registra herramientas
   config.ts                # esquema Zod de variables de entorno
   logging.ts               # logger a stderr con redacción
@@ -144,21 +146,23 @@ src/
   loggro/
     restobar/
       operations.ts        # allowlist: id, método, ruta y página oficial
-      auth.ts              # login y caché del token en memoria
+      auth.ts              # TokenProvider: token fijo o login con caché en memoria
+      branches.ts          # sucursales: singleSource, BranchSource, resolveBranch (ADR-016)
       client.ts            # un método por operación permitida
       schemas.ts           # esquemas Zod de las respuestas (solo campos usados)
   export/
     xlsx.ts                # escritor .xlsx sin dependencias (ADR-015)
     save.ts                # archivo nuevo en la carpeta local configurada, sin sobrescribir
   tools/
-    shared/                # paginación, fechas y formato de salida comunes
-    restobar/              # una herramienta por archivo
+    shared.ts              # paginación, fechas y formato de salida comunes
+    restobar/              # herramientas por recurso; branch.ts añade `branch` y list_branches
 scripts/
   sync-loggro-docs.ts      # regenera docs/loggro-api/inventory
+  smoke-restobar.ts        # prueba manual contra Restobar real, con tope de solicitudes
 tests/
   unit/                    # sin red: fetch y clientes falsos
   contract/                # allowlist frente al inventario oficial
-  integration/             # opcional, contra Restobar real, solo local y manual
+  e2e/                     # servidor MCP completo con fetch falso (incluye sucursales)
 ```
 
 ## 10. Estrategia de pruebas

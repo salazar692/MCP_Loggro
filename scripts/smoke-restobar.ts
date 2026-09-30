@@ -31,6 +31,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { loadConfig } from '../src/config.ts';
 import { HttpClient } from '../src/http/client.ts';
 import { StaticTokenProvider } from '../src/loggro/restobar/auth.ts';
+import { singleSource } from '../src/loggro/restobar/branches.ts';
 import { RestobarClient } from '../src/loggro/restobar/client.ts';
 import { RESTOBAR_ALLOWLIST } from '../src/loggro/restobar/operations.ts';
 import { silentLogger } from '../src/logging.ts';
@@ -277,10 +278,13 @@ async function main(): Promise<void> {
   const config = loadConfig(
     injected ? { ...env, LOGGRO_RESTOBAR_TOKEN: 'credencial-del-entorno' } : env,
   );
-  if (config.restobar.auth.mode !== 'token') {
-    throw new Error('La prueba de humo nunca hace login: usa un token, no usuario y contraseña.');
+  const auth = config.restobar.auth;
+  if (auth.mode !== 'token') {
+    throw new Error(
+      'La prueba de humo nunca hace login y prueba una sola cuenta: usa LOGGRO_RESTOBAR_TOKEN.',
+    );
   }
-  const token = injected ? '' : config.restobar.auth.token;
+  const token = injected ? '' : auth.token;
   if (injected) {
     console.log(
       'Credencial: la agrega el entorno a las solicitudes hacia la API (el token no está en esta máquina).',
@@ -337,7 +341,7 @@ async function main(): Promise<void> {
   });
   const server = createServer({
     // Token vacío: el cliente HTTP no envía la cabecera Authorization.
-    restobar: new RestobarClient(http, new StaticTokenProvider(token)),
+    restobar: singleSource(new RestobarClient(http, new StaticTokenProvider(token))),
     redactPersonalData: config.redactPersonalData,
     timeZone: config.timeZone,
     exportDir,

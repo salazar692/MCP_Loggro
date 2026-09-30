@@ -6,8 +6,9 @@
 (Colombian business software) through the Model Context Protocol.
 
 > [!IMPORTANT]
-> **Estado: versión 0.1.0 en validación.** Las 8 herramientas de Restobar están implementadas y
-> probadas sin red. Falta verificarlas contra la API real antes de publicar la primera versión.
+> **Estado: versión 0.1.0, verificada contra la API real de Restobar** (negocio en producción,
+> septiembre de 2026). Todas las herramientas respondieron correctamente; el detalle de cada campo está
+> en [`docs/restobar-data-map.md`](docs/restobar-data-map.md).
 >
 > Proyecto **independiente**, creado por un cliente de Loggro. No es un producto oficial de Loggro S.A.S.
 > ni está afiliado a ella. La documentación oficial de Loggro está en <https://developer.loggro.com>.
@@ -29,7 +30,8 @@
 | --- | --- |
 | Consultas de solo lectura sobre **Restobar** | Crear, modificar, eliminar o anular registros |
 | Ejecución local por stdio (Claude Desktop, Claude Code, …) | Operaciones financieras o irreversibles |
-| Credenciales del propio usuario, solo en variables de entorno | Servidor remoto o multiusuario |
+| Credenciales del propio usuario, solo en variables de entorno | Guardar o administrar credenciales de terceros |
+| Librería para montar un servidor MCP **remoto** propio (ver [`docs/remote-integration.md`](docs/remote-integration.md)) | |
 
 Solo se publica lo que se ha probado contra la API real. Hoy eso es Restobar; los demás productos
 (PYMES, Nómina, …) están documentados en el [informe de la API](docs/loggro-api/README.md), pero no se
@@ -51,7 +53,11 @@ del negocio (por defecto `America/Bogota`).
 | `restobar_list_clients` | Buscar clientes por nombre, documento o teléfono |
 | `restobar_clients_summary` | Cifras de todos los clientes: total, datos de contacto, nuevos por mes, ciudades |
 | `restobar_export_clients` | Guardar todos los clientes en un Excel (`.xlsx`) en tu computador |
-| `restobar_sales_by_day` | Total facturado por día en un rango de fechas |
+| `restobar_sales_by_day` | Total facturado y número de facturas por día en un rango de fechas |
+| `restobar_list_branches` | Solo en servidores remotos con varias sucursales: lista las sucursales disponibles |
+
+Con varias sucursales (modo remoto), todas las herramientas aceptan además `branch` («Viva»,
+«sucursal del Meridiem»…) y cada consulta usa la credencial de esa sucursal.
 
 **Listados grandes.** Un chat no puede mostrar miles de registros: sería lento, costoso y se cortaría.
 Cuando un listado supera 200 resultados, el servidor se lo advierte al asistente y le indica qué
@@ -65,59 +71,104 @@ Diseño y catálogo planeado en [`docs/tool-design.md`](docs/tool-design.md).
 
 ## Requisitos
 
-- Node.js **22.18 o superior** (probado en 22 y 24).
-- Para usar el servidor, cuando exista: acceso a **Restobar**, con un token o con usuario y contraseña.
-  Si puedes, crea un usuario dedicado con permisos mínimos.
+- **Node.js 22.18 o superior** (probado en 22, 24 y 26). Descárgalo de <https://nodejs.org> (versión LTS).
+- Un cliente MCP: **Claude Desktop**, **Claude Code** u otro compatible.
+- Acceso a **Restobar**: un token, o el correo y la contraseña de un usuario. Si puedes, usa un usuario
+  con permisos mínimos (necesita leer facturas, productos, pedidos, clientes y estadísticas de ventas).
 
-## Instalación y configuración
+## Instalación
 
-Mientras no se publique en npm, se instala desde el código fuente:
+No hace falta clonar ni compilar: `npx` descarga el servidor desde GitHub, lo compila la primera vez y
+lo ejecuta. Solo tienes que agregarlo a tu cliente MCP.
+
+### Claude Desktop
+
+1. Abre **Configuración → Desarrollador → Editar configuración**. Se abre `claude_desktop_config.json`
+   (macOS: `~/Library/Application Support/Claude/`; Windows: `%APPDATA%\Claude\`).
+2. Agrega el servidor dentro de `mcpServers` y guarda:
+
+   ```json
+   {
+     "mcpServers": {
+       "loggro-restobar": {
+         "command": "npx",
+         "args": ["-y", "github:salazar692/MCP_Loggro_Restobar"],
+         "env": {
+           "LOGGRO_RESTOBAR_EMAIL": "tu-correo-de-restobar",
+           "LOGGRO_RESTOBAR_PASSWORD": "tu-contraseña"
+         }
+       }
+     }
+   }
+   ```
+
+3. Cierra Claude Desktop por completo y vuelve a abrirlo. La primera vez tarda un poco (descarga y
+   compila). Pregunta, por ejemplo: «¿Cuánto vendimos ayer?».
+
+### Claude Code
 
 ```bash
-git clone https://github.com/salazar692/MCP_Loggro.git
-cd MCP_Loggro
-npm ci && npm run build
+claude mcp add loggro-restobar \
+  -e LOGGRO_RESTOBAR_EMAIL=tu-correo -e LOGGRO_RESTOBAR_PASSWORD=tu-contraseña \
+  -- npx -y github:salazar692/MCP_Loggro_Restobar
 ```
 
-**Claude Desktop:** agrega el servidor en el archivo de configuración de Claude Desktop
-(`claude_desktop_config.json`), con la ruta absoluta a `dist/index.js`:
+### Token o usuario y contraseña
 
-```json
-{
-  "mcpServers": {
-    "loggro-restobar": {
-      "command": "node",
-      "args": ["/ruta/a/MCP_Loggro/dist/index.js"],
-      "env": { "LOGGRO_RESTOBAR_TOKEN": "tu-token-de-restobar" }
-    }
-  }
-}
-```
+| Opción | Variables | Cuándo usarla |
+| --- | --- | --- |
+| **Usuario y contraseña** | `LOGGRO_RESTOBAR_EMAIL`, `LOGGRO_RESTOBAR_PASSWORD` | El servidor hace `POST /login` al primer uso y **renueva el token solo** si Restobar lo rechaza. |
+| **Token** | `LOGGRO_RESTOBAR_TOKEN` | La contraseña no queda en la configuración, pero cuando el token deja de servir hay que reemplazarlo a mano y reiniciar el cliente. Restobar no informa cuánto dura (su JWT no trae `exp`). |
 
-**Claude Code:**
+Usa una sola de las dos opciones. Si otras integraciones usan el mismo usuario de Restobar, ten en
+cuenta que no está confirmado si un login nuevo invalida los tokens anteriores (pregunta B2 de
+[`docs/open-questions.md`](docs/open-questions.md)); en ese caso el modo token es el más prudente.
 
-```bash
-claude mcp add loggro-restobar -e LOGGRO_RESTOBAR_TOKEN=tu-token -- node /ruta/a/MCP_Loggro/dist/index.js
-```
+**Varias sucursales:** cada sucursal de Restobar tiene su propia credencial. En instalación local,
+agrega un servidor por sucursal con nombres distintos (p. ej. `loggro-viva` y `loggro-meridiem`).
 
-Si tienes varias sucursales, cada una con su propio token, agrega un servidor por sucursal
-(p. ej. `loggro-centro` y `loggro-norte`).
+### Otras formas de instalar
 
-Variables de entorno (ver [`.env.example`](.env.example)):
+- **Una versión concreta:** `github:salazar692/MCP_Loggro_Restobar#<rama-o-etiqueta>`.
+- **Desde el código fuente:**
+
+  ```bash
+  git clone https://github.com/salazar692/MCP_Loggro_Restobar.git
+  cd MCP_Loggro_Restobar
+  npm ci            # instala y compila (dist/)
+  ```
+
+  y en el cliente usa `"command": "node"` con `"args": ["/ruta/absoluta/MCP_Loggro_Restobar/dist/index.js"]`.
+- **Como servidor remoto** (varias personas o sucursales, credenciales guardadas en tu servidor): ver
+  [`docs/remote-integration.md`](docs/remote-integration.md).
+
+### Variables de entorno
+
+Ver también [`.env.example`](.env.example).
 
 | Variable | Descripción |
 | --- | --- |
-| `LOGGRO_RESTOBAR_TOKEN` | Opción 1: token de Restobar ya obtenido. No guarda contraseña. |
-| `LOGGRO_RESTOBAR_EMAIL` / `LOGGRO_RESTOBAR_PASSWORD` | Opción 2: usuario de Restobar; el servidor obtiene el token con `POST /login`. |
-| `LOGGRO_RESTOBAR_BASE_URL` | URL base oficial, `https://api.pirpos.com`. |
-| `LOGGRO_REDACT_PERSONAL_DATA` | `true` para ocultar documento, correo, teléfono y dirección de clientes y proveedores. |
+| `LOGGRO_RESTOBAR_EMAIL` / `LOGGRO_RESTOBAR_PASSWORD` | Usuario de Restobar; el servidor obtiene y renueva el token con `POST /login`. |
+| `LOGGRO_RESTOBAR_TOKEN` | Token de Restobar ya obtenido (con o sin `Bearer `). |
+| `LOGGRO_RESTOBAR_BASE_URL` | URL base oficial, `https://api.pirpos.com` (valor por defecto). |
+| `LOGGRO_REDACT_PERSONAL_DATA` | `true` para ocultar documento, correo, teléfono y dirección de los clientes. |
 | `LOGGRO_TIMEZONE` | Zona horaria para interpretar las fechas. Por defecto `America/Bogota`. |
-| `LOGGRO_EXPORT_DIR` | Carpeta donde se guardan las exportaciones (ruta absoluta; admite `~`). Por defecto `Descargas/MCP-Loggro` (`~/Downloads/MCP-Loggro`). |
+| `LOGGRO_EXPORT_DIR` | Carpeta donde se guardan las exportaciones (ruta absoluta; admite `~`). Por defecto `~/Downloads/MCP-Loggro`. |
 | `LOG_LEVEL` | `debug`, `info`, `warn` o `error` (los logs van siempre a stderr). |
 
-El token es la opción recomendada: la contraseña no queda guardada en la configuración del cliente.
+Nunca subas credenciales reales a un repositorio. Detalles en [`docs/security.md`](docs/security.md).
 
-Nunca subas credenciales reales al repositorio. Detalles en [`docs/security.md`](docs/security.md).
+### Solución de problemas
+
+| Síntoma | Causa y solución |
+| --- | --- |
+| El cliente no muestra las herramientas | Revisa que el JSON sea válido y reinicia el cliente por completo. En Claude Desktop, los logs están en **Configuración → Desarrollador**. |
+| `npx: command not found` o `spawn npx ENOENT` | Node.js no está instalado o no está en el PATH. Instálalo y reinicia el equipo. |
+| «Faltan credenciales de Restobar» | Falta `LOGGRO_RESTOBAR_TOKEN` o el par `LOGGRO_RESTOBAR_EMAIL`/`LOGGRO_RESTOBAR_PASSWORD` en `env`. |
+| «Restobar rechazó la credencial» | El token venció o la contraseña cambió. Actualiza la configuración y reinicia el cliente. |
+| «no tiene permiso para esta consulta» (403) | El usuario de Restobar no tiene ese permiso (p. ej. estadísticas de ventas `ST_GET_SALES`). Pídeselo al administrador del negocio. |
+| «requiere un plan premium» (402) o historial limitado | Limitación del plan de Restobar, no del servidor. |
+| Detrás de un proxy corporativo, todo falla con 403 o sin conexión | El `fetch` de Node ignora `HTTPS_PROXY` salvo con `NODE_USE_ENV_PROXY=1`: agrégala a `env`. |
 
 ## Seguridad y privacidad
 
@@ -137,8 +188,10 @@ Para reportar vulnerabilidades, ver [`SECURITY.md`](SECURITY.md).
 
 ## Limitaciones conocidas
 
-- La API de Restobar **no documenta** duración del token, límites de peticiones ni zona horaria de
-  los filtros de fecha. Se validarán con pruebas reales ([`docs/open-questions.md`](docs/open-questions.md)).
+- La API de Restobar **no documenta** duración del token ni límites de peticiones
+  ([`docs/open-questions.md`](docs/open-questions.md)). La zona horaria de los filtros sí se verificó.
+- Algunos campos no los envía la API real (fecha de nacimiento de clientes, estado de cocina de los
+  pedidos) y salen vacíos; ver [`docs/restobar-data-map.md`](docs/restobar-data-map.md).
 - Las cuentas trial o gratuitas de Restobar limitan el historial visible (24 h o 30 días) y los
   reportes requieren plan premium.
 
@@ -154,13 +207,15 @@ npm run docs:sync      # regenera docs/loggro-api/inventory desde la documentaci
 **Prueba contra la API real** (opcional, con tu token): `node --env-file=.env scripts/smoke-restobar.ts`.
 Solo usa el modo token (nunca hace login) y bloquea antes de la red cualquier método que no sea GET.
 Hace como máximo 5 solicitudes por herramienta, acumuladas entre ejecuciones, e imprime solo tipos y
-conteos, nunca datos.
+conteos, nunca datos. Opciones (`SMOKE_RAW_SHAPE`, `SMOKE_INVOICE_ID`, `SMOKE_LEDGER`,
+`SMOKE_MAX_REQUESTS`) en [`docs/restobar-data-map.md`](docs/restobar-data-map.md) §10.
 
 | Documento | Contenido |
 | --- | --- |
 | [`docs/loggro-api/README.md`](docs/loggro-api/README.md) | Investigación de la API oficial: productos, autenticación, paginación, errores y límites |
 | [`docs/loggro-api/inventory/`](docs/loggro-api/inventory/README.md) | Inventario de los 629 endpoints documentados, con clasificación de lectura o escritura |
 | [`docs/restobar-data-map.md`](docs/restobar-data-map.md) | Cómo llega cada dato de la API real de Restobar y cómo queda mapeado en las herramientas y el Excel |
+| [`docs/remote-integration.md`](docs/remote-integration.md) | Cómo montar un servidor MCP remoto con esta librería: OAuth, credenciales por sucursal |
 | [`docs/architecture.md`](docs/architecture.md) | Arquitectura, flujo de datos, manejo de errores y estrategia de pruebas |
 | [`docs/security.md`](docs/security.md) | Modelo de amenazas, credenciales y privacidad |
 | [`docs/tool-design.md`](docs/tool-design.md) | Principios y catálogo propuesto de herramientas |

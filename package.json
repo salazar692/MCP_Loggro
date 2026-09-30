@@ -7,10 +7,10 @@
   "author": "Andrew",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/salazar692/MCP_Loggro.git"
+    "url": "git+https://github.com/salazar692/MCP_Loggro_Restobar.git"
   },
   "bugs": {
-    "url": "https://github.com/salazar692/MCP_Loggro/issues"
+    "url": "https://github.com/salazar692/MCP_Loggro_Restobar/issues"
   },
   "keywords": [
     "mcp",
@@ -23,6 +23,13 @@
   "bin": {
     "mcp-loggro": "dist/index.js"
   },
+  "exports": {
+    "./remote": {
+      "types": "./dist/remote.d.ts",
+      "import": "./dist/remote.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "README.md",
@@ -33,6 +40,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
     "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",

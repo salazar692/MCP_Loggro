@@ -16,7 +16,7 @@
 Requisitos: Node.js ≥ 22.18 y npm.
 
 ```bash
-git clone https://github.com/salazar692/MCP_Loggro.git
+git clone https://github.com/salazar692/MCP_Loggro_Restobar.git
 cd MCP_Loggro
 npm ci
 npm run check   # formato, lint, tipos, pruebas y build; lo mismo que la CI

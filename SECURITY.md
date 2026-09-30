@@ -8,7 +8,7 @@ sección indicará qué versiones reciben correcciones de seguridad.
 ## Cómo reportar una vulnerabilidad
 
 **No abras un issue público.** Usa el reporte privado de GitHub: pestaña **Security** →
-**Report a vulnerability** en <https://github.com/salazar692/MCP_Loggro/security/advisories/new>.
+**Report a vulnerability** en <https://github.com/salazar692/MCP_Loggro_Restobar/security/advisories/new>.
 
 Incluye, si es posible: descripción, impacto, pasos para reproducir y versión o commit afectado.
 **No incluyas credenciales ni datos reales de Loggro**; si hacen falta para reproducir el problema,

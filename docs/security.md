@@ -78,7 +78,21 @@ personales.
 - El usuario es responsable de las credenciales que configura y de quién tiene acceso al cliente MCP.
 - Se recomienda usar primero una cuenta o negocio de prueba.
 
-## 5. Reglas para contribuciones
+## 5. Modo remoto (librería)
+
+Cuando una plataforma monta las herramientas en su propio servidor (ADR-018,
+[`remote-integration.md`](./remote-integration.md)), la seguridad de las credenciales pasa a ser suya:
+
+- **Autenticación:** cada petición MCP debe traer un access token OAuth válido; el usuario se deduce del
+  token, nunca de los argumentos.
+- **Aislamiento entre negocios:** la lista de sucursales que recibe `BranchSource` es el control de
+  acceso. `branch` solo elige dentro de ella; un nombre inventado o ajeno produce un error con las
+  sucursales permitidas, nunca una consulta a otra cuenta.
+- **Token de Restobar:** lo entrega el `TokenProvider` de la plataforma y solo viaja en la cabecera
+  hacia `api.pirpos.com`; las herramientas nunca lo devuelven ni lo registran.
+- **Sin archivos en el servidor:** con `exportDir: null` no se registra la exportación a Excel.
+
+## 6. Reglas para contribuciones
 
 - No incluir credenciales, tokens, NIT, documentos, correos ni teléfonos reales en código, pruebas,
   issues ni PRs.

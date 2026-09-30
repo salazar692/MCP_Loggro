@@ -192,17 +192,36 @@ confirmación del propietario; ver [`open-questions.md`](./open-questions.md)).
 
 ## ADR-016 · Varias sucursales, cada una con su token
 
-- **Estado:** Propuesta
+- **Estado:** Aceptada e implementada (2026-09-30) en la librería; ver ADR-018.
+- **Decisión:** las sucursales se resuelven con `RestobarSource` (`src/loggro/restobar/branches.ts`).
+  Con varias, todas las herramientas aceptan `branch` (id o nombre, tolerante a tildes, mayúsculas y
+  frases) y existe `restobar_list_branches`; cada sucursal consulta con su propia credencial. La lista
+  de sucursales la entrega quien arma el servidor y es el control de acceso.
+- **En local (stdio)** no se configuran sucursales: se agrega un servidor por sucursal. Las sucursales
+  tienen sentido en un servidor remoto que ya conoce los negocios de cada usuario y sus credenciales.
+- **Historial:**
 - **Contexto:** en Restobar cada sucursal tiene su propio token (respuesta del propietario, 2026-09-29).
 - **Hoy:** se configura un servidor por sucursal en el cliente MCP (`loggro-centro`, `loggro-norte`, …).
   No requiere código, pero una pregunta como «ventas de todas las sucursales» obliga al modelo a llamar
   a cada servidor por separado.
-- **Propuesta:** un solo servidor con varias sucursales con nombre (p. ej. `LOGGRO_RESTOBAR_BRANCHES`),
-  un parámetro opcional `branch` en cada herramienta y una herramienta para listar las sucursales
-  configuradas.
+- **Propuesta original:** un solo servidor local con varias sucursales (`LOGGRO_RESTOBAR_BRANCHES`).
+  Descartada: en local no aporta y obliga a guardar varias credenciales en la configuración del cliente.
 
 ## ADR-017 · Dependencias de ejecución
 
 - **Estado:** Aceptada (2026-09-29)
 - **Decisión:** `@modelcontextprotocol/sdk` 1.31 y `zod` 4 (ADR-004 y ADR-005). Ninguna otra.
   `npm audit`: 0 vulnerabilidades al instalarlas.
+
+## ADR-018 · Modo remoto como librería
+
+- **Estado:** Aceptada e implementada (2026-09-30)
+- **Contexto:** plataformas que ya guardan las credenciales de Restobar de sus usuarios quieren ofrecer
+  las mismas herramientas a Claude sin que cada usuario instale nada ni genere tokens nuevos.
+- **Decisión:** `src/remote.ts` expone `createServer`, `RestobarClient`, `HttpClient`, `TokenProvider`,
+  `singleSource` y `BranchSource`. La plataforma pone el transporte HTTP, la autenticación del usuario
+  (OAuth) y la fuente del token. Con `exportDir: null` no se ofrece la exportación a archivo. El código
+  no depende de Node: funciona en Deno (verificado) importándolo fijado a un commit.
+- **Consecuencias:** una sola implementación de herramientas y mapeo para local y remoto. El transporte
+  stdio sigue siendo el ejecutable del paquete. Guía: [`remote-integration.md`](./remote-integration.md).
+
